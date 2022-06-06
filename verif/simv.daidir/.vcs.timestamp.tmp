@@ -1,0 +1,127 @@
+0 
+35
++cli+1
++itf+/home/lab.apps/vlsiapps_new//vcs/current/linux64/lib/vcsdp.tab
++lint=all
++memcbk
++v2k
++vcsd
++vpi
+-Mamsrun=
+-Masflags=
+-Mcc=gcc
+-Mcfl= -pipe -fPIC -O -I/home/lab.apps/vlsiapps_new//vcs/current/include
+-Mcplusplus=g++
+-Mcrt0=
+-Mcrtn=
+-Mcsrc=
+-Mexternalobj=
+-Mldflags= -rdynamic
+-Mobjects= /home/lab.apps/vlsiapps_new//vcs/current/linux64/lib/libvirsim.so /home/lab.apps/vlsiapps_new//vcs/current/linux64/lib/liberrorinf.so /home/lab.apps/vlsiapps_new//vcs/current/linux64/lib/libsnpsmalloc.so /home/lab.apps/vlsiapps_new//vcs/current/linux64/lib/libvfs.so
+-Mout=simv
+-Msaverestoreobj=/home/lab.apps/vlsiapps_new//vcs/current/linux64/lib/vcs_save_restore_new.o
+-Msyslibs=-ldl
+-Mvcsaceobjs=
+-Mxcflags= -pipe -fPIC -I/home/lab.apps/vlsiapps_new//vcs/current/include
+-Mxllcflags=
+-Xcbug=0x1
+-Xvcs_run_simv=1
+-debug=1
+-f ./refresher_tb.f
+-full64
+-gen_obj
+-picarchive
+-sverilog
+-timescale=1ns/10ps
+/home/lab.apps/vlsiapps_new//vcs/current/linux64/bin/vcs1
+./refresher_tb.f
+78
+XMODIFIERS=@im=ibus
+XDG_SESSION_ID=23412
+XDG_RUNTIME_DIR=/run/user/1070915
+XDG_MENU_PREFIX=gnome-
+XDG_DATA_DIRS=/homes/jwang710/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share
+XDG_CURRENT_DESKTOP=GNOME
+VTE_VERSION=5204
+VNCDESKTOP=vlsi031.ee.washington.edu:2 (jwang710)
+VMR_MODE_FLAG=64
+VENDOR=unknown
+VC_STATIC_HOME=/home/lab.apps/vlsiapps_new//vc_static/current
+VCS_MX_HOME_INTERNAL=1
+VCS_MODE_FLAG=64
+VCS_HOME=/home/lab.apps/vlsiapps_new//vcs/current
+VCS_DEPTH=0
+VCS_ARG_ADDED_FOR_TMP=1
+VCS_ARCH=linux64
+UVM_HOME=/home/jwang710/UVM/uvm-1.2
+UNAME=/bin/uname
+TOOL_HOME=/home/lab.apps/vlsiapps_new//vcs/current/linux64
+SYNOPSYS_LC_ROOT=/home/lab.apps/vlsiapps_new//lc/current
+SSH_TTY=/dev/pts/3
+SSH_CONNECTION=10.102.81.145 55475 128.95.4.129 22
+SSH_CLIENT=10.102.81.145 55475 22
+SSH_AUTH_SOCK=/run/user/1070915/keyring/ssh
+SSH_ASKPASS=/usr/libexec/openssh/gnome-ssh-askpass
+SSH_AGENT_PID=93340
+SESSION_MANAGER=local/unix:@/tmp/.ICE-unix/93228,unix/unix:/tmp/.ICE-unix/93228
+SCRNAME=vcs
+SCRIPT_NAME=vcs
+QT_IM_MODULE=ibus
+QT_GRAPHICSSYSTEM_CHECKED=1
+QTLIB=/usr/lib64/qt-3.3/lib
+QTINC=/usr/lib64/qt-3.3/include
+QTDIR=/usr/lib64/qt-3.3
+OVA_UUM=0
+OSTYPE=linux
+MODULESHOME=/usr/share/Modules
+MODULEPATH=/usr/share/Modules/modulefiles:/etc/modulefiles
+MODELSIM_TOOLS=/home/lab.apps/vlsiapps_new//modelsim/current/
+MGLS_LICENSE_FILE=27007@mentorls.s.uw.edu
+MGC_HOME=/home/lab.apps/vlsiapps_new//calibre/current
+LOADEDMODULES=
+LESSOPEN=||/usr/bin/lesspipe.sh %s
+LC_ALL=C
+KRB5CCNAME=KEYRING:persistent:1070915
+IMSETTINGS_MODULE=none
+IMSETTINGS_INTEGRATE_DESKTOP=yes
+HSPICE=/home/lab.apps/vlsiapps_new//hspice/current/hspice
+HOSTTYPE=x86_64-linux
+HISTCONTROL=ignoredups
+GROUP=jwang710
+GNOME_TERMINAL_SERVICE=:1.156595
+GNOME_TERMINAL_SCREEN=/org/gnome/Terminal/screen/711f7c8b_aa14_4aea_adbc_4464d0057b71
+GNOME_SHELL_SESSION_MODE=classic
+GNOME_DESKTOP_SESSION_ID=this-is-deprecated
+GJS_DEBUG_TOPICS=JS ERROR;JS LOG
+GJS_DEBUG_OUTPUT=stderr
+EDA_TOOLS_PATH=/home/lab.apps/vlsiapps_new/
+EDA_CSHRC_PATH=/home/lab.apps/vlsiapps_new//cshrc
+DBUS_SESSION_BUS_ADDRESS=unix:abstract=/tmp/dbus-95P5J3ZxCi,guid=caf43075fdc7a47bfa4b14b662509666
+CVS_RSH=ssh
+COLORTERM=truecolor
+CLS_CDSD_COMPATIBILITY_LOCKING=NO
+CDS_VERSION=IC6
+CDS_Netlisting_Mode=Analog
+CDS_LOG_PATH=.
+CDS_LOAD_ENV=CSF
+CDS_LIC_FILE=27006@cadencels.s.uw.edu
+CDS_INST_DIR=/home/lab.apps/vlsiapps_new//virtuoso/current
+CDS_DEFAULT_BROWSER=firefox
+CDS_AUTO_64BIT=EXCLUDE:si:PIPO
+CDSHOME=/home/lab.apps/vlsiapps_new//virtuoso/current
+CDSDIR=/home/lab.apps/vlsiapps_new//virtuoso/current/tools/dfII
+CDS=/home/lab.apps/vlsiapps_new//virtuoso/current
+BASH_FUNC_module()=() {  eval `/usr/bin/modulecmd bash $*`_}
+ARCH=/home/lab.apps/vlsiapps_new//hspice/current/hspice/suse64
+AFS_ROOT=/homes/lab.apps/vlsiapps/fastspice/AFS_2016_Q1_update2/afs_root
+0
+4
+1654508795 ./refresher_tb.sv
+1654501733 ../rtl/refresher_pos_8.v
+1654495764 ./refresher_tb.f
+1614744659 /home/lab.apps/vlsiapps_new//vcs/current/linux64/lib/vcsdp.tab
+4
+1614746267 /home/lab.apps/vlsiapps_new//vcs/current/linux64/lib/libvirsim.so
+1614745576 /home/lab.apps/vlsiapps_new//vcs/current/linux64/lib/liberrorinf.so
+1614745306 /home/lab.apps/vlsiapps_new//vcs/current/linux64/lib/libsnpsmalloc.so
+1614745567 /home/lab.apps/vlsiapps_new//vcs/current/linux64/lib/libvfs.so

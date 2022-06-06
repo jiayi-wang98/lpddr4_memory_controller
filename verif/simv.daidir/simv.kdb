@@ -1,0 +1,16 @@
+rc file Version 1.0
+
+[Design]
+COMPILE_PATH=/home/jwang710/mc/verif
+VCS_HOME=/home/lab.apps/vlsiapps_new//vcs/current
+VERDI_HOME=
+SystemC=FALSE
+UUM=FALSE
+KDB=FALSE
+USE_NOVAS_HOME=FALSE
+COSIM=FALSE
+TOP=refresher_tb 
+
+[Value]
+WREALX=ffff534e50535f58
+WREALZ=ffff534e50535f5a
