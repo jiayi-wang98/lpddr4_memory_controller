@@ -2,16 +2,12 @@
 module refresher_pos_8(
 	output reg cmd_valid,
 	input cmd_ready,
-	//input cmd_first,
 	output reg cmd_last,
 	output reg [16:0] cmd_payload_a,
 	output reg [2:0] cmd_payload_ba,
 	output reg cmd_payload_cas,
 	output reg cmd_payload_ras,
 	output reg cmd_payload_we,
-	//input cmd_payload_is_cmd,
-	//input cmd_payload_is_read,
-	//input cmd_payload_is_write,
 	input [7:0] ref_tRP_cfg,
 	input [7:0] ref_tRFC_cfg,
 	input [11:0] ref_tREFI_cfg,
@@ -33,10 +29,12 @@ reg sequencer_start0;
 wire sequencer_done0;
 wire sequencer_start1;
 reg sequencer_done1;
-reg [7:0] sequencer_count0;
+reg [7:0] sequencer_count0 = 8'd0;
 reg [3:0] sequencer_count1 = 4'd0;
-reg refreshsequencer_state = 1'd0;
-reg refreshsequencer_next_state;
+reg [1:0] refreshsequencer_state = 2'd0;
+reg [1:0] refreshsequencer_next_state;
+reg [7:0] sequencer_count0_next_value;
+reg sequencer_count0_next_value_ce;
 reg [1:0] fsm_state = 2'd0;
 reg [1:0] fsm_next_state;
 
@@ -64,12 +62,14 @@ always @(*) begin
 	cmd_payload_ras <= 1'd0;
 	cmd_payload_we <= 1'd0;
 	sequencer_done1 <= 1'd0;
-	sequencer_count0 <= 8'd0;
-	refreshsequencer_next_state <= 1'd0;
+	refreshsequencer_next_state <= 2'd0;
+	sequencer_count0_next_value <= 8'd0;
+	sequencer_count0_next_value_ce <= 1'd0;
 	refreshsequencer_next_state <= refreshsequencer_state;
 	case (refreshsequencer_state)
 		1'd1: begin
-			sequencer_count0 <= (sequencer_count0 - 1'd1);
+			sequencer_count0_next_value <= (sequencer_count0 - 1'd1);
+			sequencer_count0_next_value_ce <= 1'd1;
 			if ((sequencer_count0 == (ref_tRFC_cfg - 1'd1))) begin
 				cmd_payload_a <= 11'd1024;
 				cmd_payload_ba <= 1'd0;
@@ -83,14 +83,29 @@ always @(*) begin
 					cmd_payload_cas <= 1'd0;
 					cmd_payload_ras <= 1'd0;
 					cmd_payload_we <= 1'd0;
-					sequencer_done1 <= 1'd1;
-					refreshsequencer_next_state <= 1'd0;
+					refreshsequencer_next_state <= 2'd2;
 				end
+			end
+		end
+		2'd2: begin
+			sequencer_done1 <= 1'd1;
+			if (sequencer_start1) begin
+				sequencer_count0_next_value <= ((ref_tRP_cfg + ref_tRFC_cfg) - 1'd1);
+				sequencer_count0_next_value_ce <= 1'd1;
+				cmd_payload_a <= 11'd1024;
+				cmd_payload_ba <= 1'd0;
+				cmd_payload_cas <= 1'd0;
+				cmd_payload_ras <= 1'd1;
+				cmd_payload_we <= 1'd1;
+				refreshsequencer_next_state <= 1'd1;
+			end else begin
+				refreshsequencer_next_state <= 1'd0;
 			end
 		end
 		default: begin
 			if (sequencer_start1) begin
-				sequencer_count0 <= ((ref_tRP_cfg + ref_tRFC_cfg) - 1'd1);
+				sequencer_count0_next_value <= ((ref_tRP_cfg + ref_tRFC_cfg) - 1'd1);
+				sequencer_count0_next_value_ce <= 1'd1;
 				cmd_payload_a <= 11'd1024;
 				cmd_payload_ba <= 1'd0;
 				cmd_payload_cas <= 1'd0;
@@ -167,12 +182,16 @@ always @(posedge sys_clk) begin
 		end
 	end
 	refreshsequencer_state <= refreshsequencer_next_state;
+	if (sequencer_count0_next_value_ce) begin
+		sequencer_count0 <= sequencer_count0_next_value;
+	end
 	fsm_state <= fsm_next_state;
 	if (sys_rst) begin
 		postponer_req_o <= 1'd0;
 		postponer_count <= (ref_POSTPONE_cfg - 1'd1);
+		sequencer_count0 <= 8'd0;
 		sequencer_count1 <= 4'd0;
-		refreshsequencer_state <= 1'd0;
+		refreshsequencer_state <= 2'd0;
 		fsm_state <= 2'd0;
 	end
 end

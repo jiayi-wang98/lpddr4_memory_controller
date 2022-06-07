@@ -36,12 +36,12 @@ module refresher_tb();
         cmd_ready<=1'b0;
         ref_tRP_cfg<=8'd12;
         ref_tRFC_cfg<=8'd97;
-        ref_tREFI_cfg<=12'd500;//2083
+        ref_tREFI_cfg<=12'd2083;//2083
         ref_POSTPONE_cfg<=4'd8;
         #11
         cmd_ready<=1'b1; 
         rst<=1'b0;
-        #10000;
+        #100000;
         $finish;
     end 
 

@@ -3,7 +3,7 @@ gui_create_pref_key -category {Globals} -key {load_detail_for_funcov} -value_typ
 
 # State setting overrides
 gui_state_default_create -off -ini
-gui_set_state_value -category Globals -key recent_databases -value {{gui_open_db -file /home/jwang710/mc/verif/vcdplus.vpd -design V1} {gui_open_db -file /home/jwang710/mc/verif/vcdplus.vpd -design V2} {gui_open_db -file /home/jwang710/LiteDram/litedram/sim_multiplexer.vcd -design V11} {gui_open_db -file /home/jwang710/LiteDram/litedram/sim_multiplexer.vcd -design V10} {gui_open_db -file /home/jwang710/LiteDram/litedram/sim_multiplexer.vcd -design V9}}
+gui_set_state_value -category Globals -key recent_databases -value {{gui_open_db -file /home/jwang710/LiteDram/litedram/sim_refresher.vcd -design V2} {gui_open_db -file /home/jwang710/mc/verif/vcdplus.vpd -design V1} {gui_open_db -file /home/jwang710/mc/verif/vcdplus.vpd -design V2} {gui_open_db -file /home/jwang710/LiteDram/litedram/sim_multiplexer.vcd -design V11} {gui_open_db -file /home/jwang710/LiteDram/litedram/sim_multiplexer.vcd -design V10}}
 gui_set_state_value -category Layout -key child_console_size_x -value 1919
 gui_set_state_value -category Layout -key child_console_size_y -value 167
 gui_set_state_value -category Layout -key child_data_coltype -value 61
@@ -50,29 +50,398 @@ gui_state_default_create -off
 # Begin command logging
 gui_open_db -file /home/jwang710/mc/verif/vcdplus.vpd -design V1
 gui_list_select -id Data.1 -selected  { refresher_tb.clk   }
-gui_list_select -id Data.1 { refresher_tb.rst  refresher_tb.cmd_ready  refresher_tb.cmd_valid  {refresher_tb.ref_tRP_cfg[7:0]}  {refresher_tb.ref_tRFC_cfg[7:0]}  {refresher_tb.ref_tREFI_cfg[11:0]}  {refresher_tb.ref_POSTPONE_cfg[3:0]}  {refresher_tb.cmd_a[16:0]}  {refresher_tb.cmd_ba[2:0]}  refresher_tb.cmd_last  refresher_tb.cmd_cas  refresher_tb.cmd_ras  refresher_tb.cmd_we   }
+gui_list_select -id Data.1 -selected  { refresher_tb.cmd_ready   }
+gui_list_select -id Data.1 { refresher_tb.cmd_valid  {refresher_tb.ref_tRP_cfg[7:0]}  {refresher_tb.ref_tRFC_cfg[7:0]}  {refresher_tb.ref_tREFI_cfg[11:0]}  {refresher_tb.ref_POSTPONE_cfg[3:0]}  {refresher_tb.cmd_a[16:0]}  {refresher_tb.cmd_ba[2:0]}  refresher_tb.cmd_last  refresher_tb.cmd_cas  refresher_tb.cmd_ras  refresher_tb.cmd_we   }
 gui_open_window Wave
-gui_list_add -id Wave.1 -from Data.1 { refresher_tb.clk refresher_tb.rst refresher_tb.cmd_ready refresher_tb.cmd_valid {refresher_tb.ref_tRP_cfg[7:0]} {refresher_tb.ref_tRFC_cfg[7:0]} {refresher_tb.ref_tREFI_cfg[11:0]} {refresher_tb.ref_POSTPONE_cfg[3:0]} {refresher_tb.cmd_a[16:0]} {refresher_tb.cmd_ba[2:0]} refresher_tb.cmd_last refresher_tb.cmd_cas refresher_tb.cmd_ras refresher_tb.cmd_we } -insertionbar
+gui_list_add -id Wave.1 -from Data.1 { refresher_tb.cmd_ready refresher_tb.cmd_valid {refresher_tb.ref_tRP_cfg[7:0]} {refresher_tb.ref_tRFC_cfg[7:0]} {refresher_tb.ref_tREFI_cfg[11:0]} {refresher_tb.ref_POSTPONE_cfg[3:0]} {refresher_tb.cmd_a[16:0]} {refresher_tb.cmd_ba[2:0]} refresher_tb.cmd_last refresher_tb.cmd_cas refresher_tb.cmd_ras refresher_tb.cmd_we } -insertionbar
 gui_wv_zoom_timerange -id  Wave.1 0 445
-gui_zoom -window Wave.1 -full
-gui_zoom -window Wave.1 -full
-gui_zoom -window Wave.1 -full
-gui_marker_move -id  Wave.1 C1 79332
-gui_marker_select -id  Wave.1 { C1 }
-gui_marker_move -id  Wave.1 C1 81068
-gui_close_window -window TopLevel.2
-gui_list_select -id Data.1 -selected  { {refresher_tb.ref_tRP_cfg[7:0]}   }
+gui_list_expand -id  Hier.1   refresher_tb
+gui_list_select -id Data.1 -selected  { {refresher_tb.ref_POSTPONE_cfg[3:0]}   }
+gui_list_select -id Hier.1 -current_item_name refresher_tb -current_item_type Scope  -selected  {  }
+gui_list_select -id Hier.1 -current_item_name refresher_tb.dut -current_item_type Scope  -selected  { refresher_tb.dut   }
+gui_list_select -id Data.1 -selected  { refresher_tb.dut.timer_wait   }
+gui_list_select -id Data.1 -selected  { refresher_tb.dut.wants_refresh   }
+gui_list_select -id Data.1 { refresher_tb.dut.timer_wait  refresher_tb.dut.timer_done0  {refresher_tb.dut.timer_count0[11:0]}  refresher_tb.dut.timer_done1  {refresher_tb.dut.timer_count1[11:0]}  refresher_tb.dut.postponer_req_i  refresher_tb.dut.postponer_req_o  {refresher_tb.dut.postponer_count[3:0]}  refresher_tb.dut.sequencer_start0  refresher_tb.dut.sequencer_done0  refresher_tb.dut.sequencer_start1  refresher_tb.dut.sequencer_done1  {refresher_tb.dut.sequencer_count0[7:0]}  {refresher_tb.dut.sequencer_count1[3:0]}  refresher_tb.dut.refreshsequencer_state  refresher_tb.dut.refreshsequencer_next_state   }
+gui_list_add -id Wave.1 -from Data.1 { refresher_tb.dut.wants_refresh refresher_tb.dut.timer_wait refresher_tb.dut.timer_done0 {refresher_tb.dut.timer_count0[11:0]} refresher_tb.dut.timer_done1 {refresher_tb.dut.timer_count1[11:0]} refresher_tb.dut.postponer_req_i refresher_tb.dut.postponer_req_o {refresher_tb.dut.postponer_count[3:0]} refresher_tb.dut.sequencer_start0 refresher_tb.dut.sequencer_done0 refresher_tb.dut.sequencer_start1 refresher_tb.dut.sequencer_done1 {refresher_tb.dut.sequencer_count0[7:0]} {refresher_tb.dut.sequencer_count1[3:0]} refresher_tb.dut.refreshsequencer_state refresher_tb.dut.refreshsequencer_next_state } -insertionbar
 gui_save_session -reload -default_file
 gui_set_pref_value -category {Globals} -key {use_mhpi_lookup} -value {false}
 gui_set_pref_value -category {Globals} -key {use_mhpi_lookup} -value {true}
-gui_list_select -id Data.1 -selected  { refresher_tb.clk   }
-gui_list_select -id Data.1 { refresher_tb.rst  refresher_tb.cmd_ready  refresher_tb.cmd_valid  {refresher_tb.ref_tRP_cfg[7:0]}  {refresher_tb.ref_tRFC_cfg[7:0]}  {refresher_tb.ref_tREFI_cfg[11:0]}  {refresher_tb.ref_POSTPONE_cfg[3:0]}  {refresher_tb.cmd_a[16:0]}  {refresher_tb.cmd_ba[2:0]}  refresher_tb.cmd_last  refresher_tb.cmd_cas  refresher_tb.cmd_ras  refresher_tb.cmd_we   }
-gui_open_window Wave
-gui_list_add -id Wave.1 -from Data.1 { refresher_tb.clk refresher_tb.rst refresher_tb.cmd_ready refresher_tb.cmd_valid {refresher_tb.ref_tRP_cfg[7:0]} {refresher_tb.ref_tRFC_cfg[7:0]} {refresher_tb.ref_tREFI_cfg[11:0]} {refresher_tb.ref_POSTPONE_cfg[3:0]} {refresher_tb.cmd_a[16:0]} {refresher_tb.cmd_ba[2:0]} refresher_tb.cmd_last refresher_tb.cmd_cas refresher_tb.cmd_ras refresher_tb.cmd_we } -insertionbar
-gui_wv_zoom_timerange -id  Wave.1 0 445
 gui_zoom -window Wave.1 -full
-gui_marker_move -id  Wave.1 C1 10717
-gui_marker_move -id  Wave.1 C1 7125
-gui_marker_move -id  Wave.1 C1 2634
-gui_close_window -window TopLevel.2
+gui_wv_zoom_timerange -id  Wave.1 3268871 3665325
+gui_wv_zoom_timerange -id  Wave.1 3480018 3490100
+gui_list_select -id Wave.1 -selected  { refresher_tb.dut.sequencer_start1   }
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_zoom_timerange -id  Wave.1 3485175 3486645
+gui_list_select -id Wave.1 -selected  { {refresher_tb.dut.timer_count1[11:0]}   }
+gui_list_select -id Wave.1 -selected  { {refresher_tb.dut.timer_count0[11:0]}  refresher_tb.dut.timer_done1  {refresher_tb.dut.timer_count1[11:0]}   }
+gui_list_select -id Wave.1 -selected  { {refresher_tb.dut.timer_count0[11:0]}   }
+gui_list_select -id Wave.1 -selected  { {refresher_tb.dut.timer_count0[11:0]}  {refresher_tb.dut.timer_count1[11:0]}   }
+gui_list_set_selected_property -id Wave.1 -radix decimal
+gui_zoom -window Wave.1 -factor 2
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_wv_scrollleft -id  Wave.1  line
+gui_wv_scrollleft -id  Wave.1  line
+gui_wv_scrollleft -id  Wave.1  line
+gui_wv_scrollleft -id  Wave.1  line
+gui_wv_scrollleft -id  Wave.1  line
+gui_wv_scrollleft -id  Wave.1  line
+gui_wv_scrollleft -id  Wave.1  line
+gui_wv_scrollleft -id  Wave.1  line
+gui_wv_scrollleft -id  Wave.1  line
+gui_wv_scrollleft -id  Wave.1  line
+gui_wv_scrollleft -id  Wave.1  line
+gui_wv_scrollleft -id  Wave.1  line
+gui_wv_scrollleft -id  Wave.1  line
+gui_wv_scrollleft -id  Wave.1  line
+gui_wv_scrollleft -id  Wave.1  line
+gui_wv_scrollleft -id  Wave.1  line
+gui_wv_scrollleft -id  Wave.1  line
+gui_wv_scrollleft -id  Wave.1  line
+gui_wv_scrollleft -id  Wave.1  line
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_wv_zoom_timerange -id  Wave.1 3463326 3464453
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_wv_zoom_timerange -id  Wave.1 3323964 3346858
+gui_wv_zoom_timerange -id  Wave.1 3332884 3333586
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_list_select -id Wave.1 -selected  { refresher_tb.dut.sequencer_start1   }
+gui_list_select -id Wave.1 -selected  { refresher_tb.dut.sequencer_done1   }
+gui_list_select -id Wave.1 -selected  { refresher_tb.dut.sequencer_start1   }
+gui_list_select -id Wave.1 -selected  { {refresher_tb.dut.sequencer_count0[7:0]}   }
+gui_list_select -id Wave.1 -selected  { refresher_tb.dut.sequencer_start1   }
+gui_list_select -id Wave.1 -selected  { {refresher_tb.dut.sequencer_count0[7:0]}   }
+gui_list_select -id Wave.1 -selected  { refresher_tb.dut.sequencer_start1   }
+gui_list_select -id Wave.1 -selected  { {refresher_tb.dut.sequencer_count0[7:0]}   }
+gui_list_select -id Wave.1 -selected  { refresher_tb.dut.sequencer_start1   }
+gui_list_select -id Wave.1 -selected  { {refresher_tb.dut.sequencer_count0[7:0]}   }
+gui_list_select -id Wave.1 -selected  { refresher_tb.dut.sequencer_start1   }
+gui_list_select -id Wave.1 -selected  { {refresher_tb.dut.sequencer_count0[7:0]}   }
+gui_list_select -id Wave.1 -selected  { refresher_tb.dut.sequencer_start1   }
+gui_list_select -id Wave.1 -selected  { {refresher_tb.dut.sequencer_count0[7:0]}   }
+gui_list_select -id Wave.1 -selected  { refresher_tb.dut.sequencer_start1   }
+gui_marker_move -id  Wave.1 C1 3332787
+gui_marker_move -id  Wave.1 C1 3333163
+gui_marker_move -id  Wave.1 C1 3333356
+gui_marker_move -id  Wave.1 C1 3333209
+gui_marker_move -id  Wave.1 C1 3333369
+gui_list_select -id Wave.1 -selected  { {refresher_tb.dut.sequencer_count0[7:0]}   }
+gui_list_set_selected_property -id Wave.1 -radix decimal
+gui_marker_move -id  Wave.1 C1 3333205
+gui_marker_move -id  Wave.1 C1 3333380
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_zoom -window Wave.1 -factor 0.5
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_save_session -reload -default_file
+gui_set_pref_value -category {Globals} -key {use_mhpi_lookup} -value {false}
+gui_set_pref_value -category {Globals} -key {use_mhpi_lookup} -value {true}
+gui_zoom -window Wave.1 -full
+gui_wv_zoom_timerange -id  Wave.1 3253911 3657844
+gui_list_select -id Wave.1 -selected  { {refresher_tb.dut.refreshsequencer_state[1:0]}   }
+gui_list_select -id Wave.1 -selected  { {refresher_tb.dut.refreshsequencer_next_state[1:0]}   }
+gui_wv_zoom_timerange -id  Wave.1 3350801 3358354
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_wv_zoom_timerange -id  Wave.1 3482355 3489223
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 2
+gui_zoom -window Wave.1 -factor 2
+gui_zoom -window Wave.1 -factor 0.5
+gui_wv_zoom_timerange -id  Wave.1 3483219 3488808
+gui_marker_move -id  Wave.1 C1 3486328
+gui_marker_move -id  Wave.1 C1 3486248
+gui_marker_move -id  Wave.1 C1 3486307
+gui_save_session -reload -default_file
+gui_set_pref_value -category {Globals} -key {use_mhpi_lookup} -value {false}
+gui_set_pref_value -category {Globals} -key {use_mhpi_lookup} -value {true}
+gui_zoom -window Wave.1 -factor 2
+gui_zoom -window Wave.1 -full
+gui_wv_zoom_timerange -id  Wave.1 3261391 4024377
+gui_marker_move -id  Wave.1 C1 3709927
+gui_marker_move -id  Wave.1 C1 3721911
+gui_marker_move -id  Wave.1 C1 3712780
+gui_marker_move -id  Wave.1 C1 3721340
+gui_marker_move -id  Wave.1 C1 3333300
+gui_marker_move -id  Wave.1 C1 3355100
+gui_marker_move -id  Wave.1 C1 3335900
+gui_marker_move -id  Wave.1 C1 3333100
+gui_marker_move -id  Wave.1 C1 3335900
+gui_marker_move -id  Wave.1 C1 3355100
+gui_marker_move -id  Wave.1 C1 3406700
+gui_marker_move -id  Wave.1 C1 3457900
+gui_marker_move -id  Wave.1 C1 3489900
+gui_marker_move -id  Wave.1 C1 3509300
+gui_marker_move -id  Wave.1 C1 3509500
+gui_marker_move -id  Wave.1 C1 3524459
+gui_marker_move -id  Wave.1 C1 3541500
+gui_marker_move -id  Wave.1 C1 3560900
+gui_marker_move -id  Wave.1 C1 3601499
+gui_zoom -window Wave.1 -factor 2
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 2
+gui_zoom -window Wave.1 -factor 2
+gui_marker_move -id  Wave.1 C1 3358407
+gui_wv_zoom_timerange -id  Wave.1 3310471 3418898
+gui_wv_zoom_timerange -id  Wave.1 3332042 3335935
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_wv_zoom_timerange -id  Wave.1 3354518 3357219
+gui_zoom -window Wave.1 -full
+gui_save_session -reload -default_file
+gui_set_pref_value -category {Globals} -key {use_mhpi_lookup} -value {false}
+gui_set_pref_value -category {Globals} -key {use_mhpi_lookup} -value {true}
+gui_zoom -window Wave.1 -full
+gui_marker_move -id  Wave.1 C1 3333100
+gui_marker_move -id  Wave.1 C1 3710206
+gui_marker_move -id  Wave.1 C1 3134227
+gui_marker_move -id  Wave.1 C1 3333100
+gui_wv_zoom_timerange -id  Wave.1 3179108 3598002
+gui_marker_move -id  Wave.1 C1 3348332
+gui_marker_move -id  Wave.1 C1 3345199
+gui_marker_select -id  Wave.1 { C1 }
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 2
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -full
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -full
+gui_list_select -id Wave.1 -selected  { refresher_tb.cmd_valid   }
+gui_marker_move -id  Wave.1 C1 3509100
+gui_marker_move -id  Wave.1 C1 6665900
+gui_marker_move -id  Wave.1 C1 6841900
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          gui_zoom -window Wave.1 -factor 0.5
+gui_wv_zoom_timerange -id  Wave.1 1600740430081123 1906589097863372
+gui_wv_zoom_timerange -id  Wave.1 1741301465339177 1747477915623485
+gui_list_select -id Wave.1 -selected  { V2:Refresher.sequencer_start1   }
+gui_list_select -id Wave.1 -selected  { V2:Refresher.sequencer_done1   }
+gui_list_select -id Wave.1 -selected  { V2:Refresher.sequencer_start1   }
+gui_list_select -id Wave.1 -selected  { {V2:Refresher.state[143:0]}   }
+gui_list_select -id Wave.1 -selected  { {V2:Refresher.next_state[159:0]}   }
+gui_list_select -id Wave.1 -selected  { {V2:Refresher.state[143:0]}   }
+gui_list_select -id Wave.1 -selected  { {V2:Refresher.next_state[159:0]}   }
+gui_list_select -id Wave.1 -selected  { {V2:Refresher.state[143:0]}   }
+gui_list_select -id Wave.1 -selected  { {V2:Refresher.next_state[159:0]}   }
+gui_wv_zoom_timerange -id  Wave.1 1743246502232857 1743870152785124
+gui_list_select -id Wave.1 -selected  { {V2:Refresher.timer_count1[11:0]}   }
+gui_list_select -id Wave.1 -selected  { {V2:Refresher.timer_count1[11:0]}  {V2:Refresher.timer_count0[11:0]}   }
+gui_list_set_selected_property -id Wave.1 -radix decimal
+gui_marker_move -id  Wave.1 C1 1743485320364355
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_wv_zoom_timerange -id  Wave.1 1742228690153783 1745572240758602
+gui_wv_zoom_timerange -id  Wave.1 1743375300439846 1743680396306554
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_marker_move -id  Wave.1 C1 1743550000000000
+gui_marker_move -id  Wave.1 C1 1743459719264869
+gui_marker_move -id  Wave.1 C1 1743499881473202
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_wv_zoom_timerange -id  Wave.1 1663504064694476 1669813182512533
+gui_list_select -id Wave.1 -selected  { {V2:Refresher.sequencer_counter[6:0]}   }
+gui_list_set_selected_property -id Wave.1 -radix decimal
+gui_marker_move -id  Wave.1 C1 1666450000000000
+gui_marker_move -id  Wave.1 C1 1666450000000000
+gui_wv_zoom_timerange -id  Wave.1 1666329089775696 1666744349587206
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -factor 0.5
+gui_marker_move -id  Wave.1 C1 1666274563454220
+gui_marker_move -id  Wave.1 C1 1666520551315638
+gui_marker_move -id  Wave.1 C1 1666600062543571
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
+gui_wv_scrollright -id  Wave.1  line
 gui_list_select -id Data.1 -selected  {  }
+gui_list_select -id Wave.1 -selected  {  }
+gui_zoom -window Wave.1 -full
+gui_wv_zoom_timerange -id  Wave.1 1334871989528796 2076467539267016
+gui_wv_zoom_timerange -id  Wave.1 1634061697478531 1780494924951149
