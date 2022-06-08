@@ -1,17 +1,13 @@
 # Begin_DVE_Session_Save_Info
 # DVE full session
-# Saved on Wed Jun 8 07:22:44 2022
-# Designs open: 2
+# Saved on Wed Jun 8 07:22:32 2022
+# Designs open: 1
 #   V1: /home/jwang710/mc/verif/vcdplus.vpd
-#   V2: /home/jwang710/LiteDram/litedram/sim_refresher.vcd
 # Toplevel windows open: 1
 # 	TopLevel.1
-#   Source.1: V1:refresher_tb
-#   Group count = 4
-#   Group Group1 signal count = 14
-#   Group Group2 signal count = 14
-#   Group Group3 signal count = 58
-#   Group Group4 signal count = 25
+#   Source.1: refresher_tb
+#   Group count = 1
+#   Group Group1 signal count = 29
 # End_DVE_Session_Save_Info
 
 # DVE version: R-2020.12-SP1_Full64
@@ -70,7 +66,7 @@ if {![gui_exist_window -window TopLevel.1]} {
 } else { 
     set TopLevel.1 TopLevel.1
 }
-gui_show_window -window ${TopLevel.1} -show_state maximized -rect {{1 38} {1920 1014}}
+gui_show_window -window ${TopLevel.1} -show_state normal -rect {{1 38} {1717 906}}
 
 # ToolBar settings
 gui_set_toolbar_attributes -toolbar {TimeOperations} -dock_state top
@@ -116,18 +112,18 @@ catch { set Hier.1 [gui_share_window -id ${HSPane.1} -type Hier] }
 gui_set_window_pref_key -window ${HSPane.1} -key dock_width -value_type integer -value 264
 gui_set_window_pref_key -window ${HSPane.1} -key dock_height -value_type integer -value -1
 gui_set_window_pref_key -window ${HSPane.1} -key dock_offset -value_type integer -value 0
-gui_update_layout -id ${HSPane.1} {{left 0} {top 0} {width 263} {height 729} {dock_state left} {dock_on_new_line true} {child_hier_colhier 152} {child_hier_coltype 111} {child_hier_colpd 0} {child_hier_col1 0} {child_hier_col2 1} {child_hier_col3 -1}}
+gui_update_layout -id ${HSPane.1} {{left 0} {top 0} {width 263} {height 621} {dock_state left} {dock_on_new_line true} {child_hier_colhier 152} {child_hier_coltype 111} {child_hier_colpd 0} {child_hier_col1 0} {child_hier_col2 1} {child_hier_col3 -1}}
 set DLPane.1 [gui_create_window -type DLPane -parent ${TopLevel.1} -dock_state left -dock_on_new_line true -dock_extent 375]
 catch { set Data.1 [gui_share_window -id ${DLPane.1} -type Data] }
 gui_set_window_pref_key -window ${DLPane.1} -key dock_width -value_type integer -value 375
 gui_set_window_pref_key -window ${DLPane.1} -key dock_height -value_type integer -value 728
 gui_set_window_pref_key -window ${DLPane.1} -key dock_offset -value_type integer -value 0
-gui_update_layout -id ${DLPane.1} {{left 0} {top 0} {width 374} {height 729} {dock_state left} {dock_on_new_line true} {child_data_colvariable 242} {child_data_colvalue 65} {child_data_coltype 61} {child_data_col1 0} {child_data_col2 1} {child_data_col3 2}}
+gui_update_layout -id ${DLPane.1} {{left 0} {top 0} {width 374} {height 621} {dock_state left} {dock_on_new_line true} {child_data_colvariable 242} {child_data_colvalue 65} {child_data_coltype 61} {child_data_col1 0} {child_data_col2 1} {child_data_col3 2}}
 set Console.1 [gui_create_window -type Console -parent ${TopLevel.1} -dock_state bottom -dock_on_new_line true -dock_extent 167]
 gui_set_window_pref_key -window ${Console.1} -key dock_width -value_type integer -value 1860
 gui_set_window_pref_key -window ${Console.1} -key dock_height -value_type integer -value 167
 gui_set_window_pref_key -window ${Console.1} -key dock_offset -value_type integer -value 0
-gui_update_layout -id ${Console.1} {{left 0} {top 0} {width 1919} {height 166} {dock_state bottom} {dock_on_new_line true}}
+gui_update_layout -id ${Console.1} {{left 0} {top 0} {width 1716} {height 166} {dock_state bottom} {dock_on_new_line true}}
 #### Start - Readjusting docked view's offset / size
 set dockAreaList { top left right bottom }
 foreach dockArea $dockAreaList {
@@ -173,11 +169,8 @@ gui_update_statusbar_target_frame ${TopLevel.1}
 if { ![gui_is_db_opened -db {/home/jwang710/mc/verif/vcdplus.vpd}] } {
 	gui_open_db -design V1 -file /home/jwang710/mc/verif/vcdplus.vpd -nosource
 }
-if { ![gui_is_db_opened -db {/home/jwang710/LiteDram/litedram/sim_refresher.vcd.vpd}] } {
-	gui_open_db -design V2 -file /home/jwang710/LiteDram/litedram/sim_refresher.vcd.vpd -nosource
-}
-gui_set_precision 100ps
-gui_set_time_units 100ps
+gui_set_precision 10ps
+gui_set_time_units 10ps
 #</Database>
 
 # DVE Global setting session: 
@@ -192,48 +185,21 @@ gui_set_time_units 100ps
 # Global: Signal Compare
 
 # Global: Signal Groups
-gui_load_child_values {V1:refresher_tb.dut}
-gui_load_child_values {V1:refresher_tb}
-gui_load_child_values {V2:Refresher}
+gui_load_child_values {refresher_tb.dut}
+gui_load_child_values {refresher_tb}
 
 
-set _session_group_7 Group1
-gui_sg_create "$_session_group_7"
-set Group1 "$_session_group_7"
+set _session_group_5 Group1
+gui_sg_create "$_session_group_5"
+set Group1 "$_session_group_5"
 
-gui_sg_addsignal -group "$_session_group_7" { V1:refresher_tb.clk V1:refresher_tb.rst V1:refresher_tb.cmd_ready V1:refresher_tb.cmd_valid V1:refresher_tb.ref_tRP_cfg V1:refresher_tb.ref_tRFC_cfg V1:refresher_tb.ref_tREFI_cfg V1:refresher_tb.ref_POSTPONE_cfg V1:refresher_tb.cmd_a V1:refresher_tb.cmd_ba V1:refresher_tb.cmd_last V1:refresher_tb.cmd_cas V1:refresher_tb.cmd_ras V1:refresher_tb.cmd_we }
-
-set _session_group_8 Group2
-gui_sg_create "$_session_group_8"
-set Group2 "$_session_group_8"
-
-gui_sg_addsignal -group "$_session_group_8" { V1:refresher_tb.clk V1:refresher_tb.rst V1:refresher_tb.cmd_ready V1:refresher_tb.cmd_valid V1:refresher_tb.ref_tRP_cfg V1:refresher_tb.ref_tRFC_cfg V1:refresher_tb.ref_tREFI_cfg V1:refresher_tb.ref_POSTPONE_cfg V1:refresher_tb.cmd_a V1:refresher_tb.cmd_ba V1:refresher_tb.cmd_last V1:refresher_tb.cmd_cas V1:refresher_tb.cmd_ras V1:refresher_tb.cmd_we }
-
-set _session_group_9 Group3
-gui_sg_create "$_session_group_9"
-set Group3 "$_session_group_9"
-
-gui_sg_addsignal -group "$_session_group_9" { V1:refresher_tb.clk V1:refresher_tb.rst V1:refresher_tb.cmd_ready V1:refresher_tb.cmd_valid V1:refresher_tb.ref_tRP_cfg V1:refresher_tb.ref_tRFC_cfg V1:refresher_tb.ref_tREFI_cfg V1:refresher_tb.ref_POSTPONE_cfg V1:refresher_tb.cmd_a V1:refresher_tb.cmd_ba V1:refresher_tb.cmd_last V1:refresher_tb.cmd_cas V1:refresher_tb.cmd_ras V1:refresher_tb.cmd_we V1:refresher_tb.dut.wants_refresh V1:refresher_tb.dut.timer_wait V1:refresher_tb.dut.timer_done0 V1:refresher_tb.dut.timer_count0 V1:refresher_tb.dut.timer_done1 V1:refresher_tb.dut.timer_count1 V1:refresher_tb.dut.postponer_req_i V1:refresher_tb.dut.postponer_req_o V1:refresher_tb.dut.postponer_count V1:refresher_tb.dut.sequencer_start0 V1:refresher_tb.dut.sequencer_done0 V1:refresher_tb.dut.sequencer_start1 V1:refresher_tb.dut.sequencer_done1 V1:refresher_tb.dut.sequencer_count0 V1:refresher_tb.dut.sequencer_count1 V1:refresher_tb.dut.refreshsequencer_state V1:refresher_tb.dut.refreshsequencer_next_state V1:refresher_tb.dut.fsm_state V1:refresher_tb.dut.fsm_next_state V2:Refresher.cmd_valid V2:Refresher.cmd_ready V2:Refresher.cmd_last V2:Refresher.cmd_payload_a V2:Refresher.cmd_payload_ba V2:Refresher.cmd_payload_cas V2:Refresher.cmd_payload_ras V2:Refresher.cmd_payload_we V2:Refresher.wants_refresh V2:Refresher.timer_wait V2:Refresher.timer_done0 V2:Refresher.timer_count0 V2:Refresher.timer_done1 V2:Refresher.timer_count1 V2:Refresher.postponer_req_i V2:Refresher.postponer_req_o V2:Refresher.postponer_count V2:Refresher.sequencer_start0 V2:Refresher.sequencer_done0 V2:Refresher.sequencer_start1 V2:Refresher.sequencer_done1 V2:Refresher.sequencer_counter V2:Refresher.sequencer_count V2:Refresher.state V2:Refresher.next_state }
+gui_sg_addsignal -group "$_session_group_5" { refresher_tb.cmd_ready refresher_tb.cmd_valid refresher_tb.ref_tRP_cfg refresher_tb.ref_tRFC_cfg refresher_tb.ref_tREFI_cfg refresher_tb.ref_POSTPONE_cfg refresher_tb.cmd_a refresher_tb.cmd_ba refresher_tb.cmd_last refresher_tb.cmd_cas refresher_tb.cmd_ras refresher_tb.cmd_we refresher_tb.dut.wants_refresh refresher_tb.dut.timer_wait refresher_tb.dut.timer_done0 refresher_tb.dut.timer_count0 refresher_tb.dut.timer_done1 refresher_tb.dut.timer_count1 refresher_tb.dut.postponer_req_i refresher_tb.dut.postponer_req_o refresher_tb.dut.postponer_count refresher_tb.dut.sequencer_start0 refresher_tb.dut.sequencer_done0 refresher_tb.dut.sequencer_start1 refresher_tb.dut.sequencer_done1 refresher_tb.dut.sequencer_count0 refresher_tb.dut.sequencer_count1 refresher_tb.dut.refreshsequencer_state refresher_tb.dut.refreshsequencer_next_state }
+gui_set_radix -radix {decimal} -signals {V1:refresher_tb.dut.timer_count0}
+gui_set_radix -radix {unsigned} -signals {V1:refresher_tb.dut.timer_count0}
 gui_set_radix -radix {decimal} -signals {V1:refresher_tb.dut.timer_count1}
 gui_set_radix -radix {unsigned} -signals {V1:refresher_tb.dut.timer_count1}
-gui_set_radix -radix {decimal} -signals {V2:Refresher.timer_count0}
-gui_set_radix -radix {unsigned} -signals {V2:Refresher.timer_count0}
-gui_set_radix -radix {decimal} -signals {V2:Refresher.timer_count1}
-gui_set_radix -radix {unsigned} -signals {V2:Refresher.timer_count1}
-gui_set_radix -radix {decimal} -signals {V2:Refresher.sequencer_counter}
-gui_set_radix -radix {unsigned} -signals {V2:Refresher.sequencer_counter}
-
-set _session_group_10 Group4
-gui_sg_create "$_session_group_10"
-set Group4 "$_session_group_10"
-
-gui_sg_addsignal -group "$_session_group_10" { V2:Refresher.cmd_valid V2:Refresher.cmd_ready V2:Refresher.cmd_last V2:Refresher.cmd_payload_a V2:Refresher.cmd_payload_ba V2:Refresher.cmd_payload_cas V2:Refresher.cmd_payload_ras V2:Refresher.cmd_payload_we V2:Refresher.wants_refresh V2:Refresher.timer_wait V2:Refresher.timer_done0 V2:Refresher.timer_count0 V2:Refresher.timer_done1 V2:Refresher.timer_count1 V2:Refresher.postponer_req_i V2:Refresher.postponer_req_o V2:Refresher.postponer_count V2:Refresher.sequencer_start0 V2:Refresher.sequencer_done0 V2:Refresher.sequencer_start1 V2:Refresher.sequencer_done1 V2:Refresher.sequencer_counter V2:Refresher.sequencer_count V2:Refresher.state V2:Refresher.next_state }
-gui_set_radix -radix {decimal} -signals {V2:Refresher.timer_count0}
-gui_set_radix -radix {unsigned} -signals {V2:Refresher.timer_count0}
-gui_set_radix -radix {decimal} -signals {V2:Refresher.timer_count1}
-gui_set_radix -radix {unsigned} -signals {V2:Refresher.timer_count1}
-gui_set_radix -radix {decimal} -signals {V2:Refresher.sequencer_counter}
-gui_set_radix -radix {unsigned} -signals {V2:Refresher.sequencer_counter}
+gui_set_radix -radix {decimal} -signals {V1:refresher_tb.dut.sequencer_count0}
+gui_set_radix -radix {unsigned} -signals {V1:refresher_tb.dut.sequencer_count0}
 
 # Global: Highlighting
 
@@ -243,7 +209,7 @@ gui_change_stack_mode -mode list
 # Post database loading setting...
 
 # Restore C1 time
-gui_set_time -C1_only 1658955943551043
+gui_set_time -C1_only 3126746
 
 
 
@@ -267,15 +233,18 @@ gui_show_window -window ${Hier.1}
 gui_list_set_filter -id ${Hier.1} -list { {Package 1} {All 0} {Process 1} {VirtPowSwitch 0} {UnnamedProcess 1} {UDP 0} {Function 1} {Block 1} {SrsnAndSpaCell 0} {OVA Unit 1} {LeafScCell 1} {LeafVlgCell 1} {Interface 1} {LeafVhdCell 1} {$unit 1} {NamedBlock 1} {Task 1} {VlgPackage 1} {ClassDef 1} {VirtIsoCell 0} }
 gui_list_set_filter -id ${Hier.1} -text {*}
 gui_hier_list_init -id ${Hier.1}
-gui_change_design -id ${Hier.1} -design V2
-catch {gui_list_select -id ${Hier.1} {V2:Refresher}}
+gui_change_design -id ${Hier.1} -design V1
+catch {gui_list_expand -id ${Hier.1} refresher_tb}
+catch {gui_list_select -id ${Hier.1} {refresher_tb.dut}}
 gui_view_scroll -id ${Hier.1} -vertical -set 0
 gui_view_scroll -id ${Hier.1} -horizontal -set 0
 
 # Data 'Data.1'
 gui_list_set_filter -id ${Data.1} -list { {Buffer 1} {Input 1} {Others 1} {Linkage 1} {Output 1} {LowPower 1} {Parameter 1} {All 1} {Aggregate 1} {LibBaseMember 1} {Event 1} {Assertion 1} {Constant 1} {Interface 1} {BaseMembers 1} {Signal 1} {$unit 1} {Inout 1} {Variable 1} }
 gui_list_set_filter -id ${Data.1} -text {*}
-gui_list_show_data -id ${Data.1} {V2:Refresher}
+gui_list_show_data -id ${Data.1} {refresher_tb.dut}
+gui_show_window -window ${Data.1}
+catch { gui_list_select -id ${Data.1} {refresher_tb.dut.wants_refresh refresher_tb.dut.timer_wait refresher_tb.dut.timer_done0 refresher_tb.dut.timer_count0 refresher_tb.dut.timer_done1 refresher_tb.dut.timer_count1 refresher_tb.dut.postponer_req_i refresher_tb.dut.postponer_req_o refresher_tb.dut.postponer_count refresher_tb.dut.sequencer_start0 refresher_tb.dut.sequencer_done0 refresher_tb.dut.sequencer_start1 refresher_tb.dut.sequencer_done1 refresher_tb.dut.sequencer_count0 refresher_tb.dut.sequencer_count1 refresher_tb.dut.refreshsequencer_state refresher_tb.dut.refreshsequencer_next_state }}
 gui_view_scroll -id ${Data.1} -vertical -set 0
 gui_view_scroll -id ${Data.1} -horizontal -set 0
 gui_view_scroll -id ${Hier.1} -vertical -set 0
@@ -284,7 +253,7 @@ gui_view_scroll -id ${Hier.1} -horizontal -set 0
 # Source 'Source.1'
 gui_src_value_annotate -id ${Source.1} -switch false
 gui_set_env TOGGLE::VALUEANNOTATE 0
-gui_open_source -id ${Source.1}  -replace -active V1:refresher_tb /home/jwang710/mc/verif/./refresher_tb.sv
+gui_open_source -id ${Source.1}  -replace -active refresher_tb /home/jwang710/mc/verif/./refresher_tb.sv
 gui_view_scroll -id ${Source.1} -vertical -set 32
 gui_src_set_reusable -id ${Source.1}
 # Restore toplevel window zorder

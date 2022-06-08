@@ -323,7 +323,17 @@ gui_list_select -id Wave.1 -selected  { refresher_tb.cmd_valid   }
 gui_marker_move -id  Wave.1 C1 3509100
 gui_marker_move -id  Wave.1 C1 6665900
 gui_marker_move -id  Wave.1 C1 6841900
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          gui_zoom -window Wave.1 -factor 0.5
+gui_marker_move -id  Wave.1 C1 5797197
+gui_marker_move -id  Wave.1 C1 7225926
+gui_marker_move -id  Wave.1 C1 5475546
+gui_marker_move -id  Wave.1 C1 3605483
+gui_marker_move -id  Wave.1 C1 3126746
+gui_wv_zoom_timerange -id  Wave.1 3209029 3627923
+gui_zoom -window Wave.1 -full
+gui_zoom -window Wave.1 -factor 0.5
+gui_zoom -window Wave.1 -full
+gui_close_window -window TopLevel.2
+                                                                                                                                                                                 gui_zoom -window Wave.1 -factor 0.5
 gui_wv_zoom_timerange -id  Wave.1 1600740430081123 1906589097863372
 gui_wv_zoom_timerange -id  Wave.1 1741301465339177 1747477915623485
 gui_list_select -id Wave.1 -selected  { V2:Refresher.sequencer_start1   }
@@ -445,3 +455,5 @@ gui_list_select -id Wave.1 -selected  {  }
 gui_zoom -window Wave.1 -full
 gui_wv_zoom_timerange -id  Wave.1 1334871989528796 2076467539267016
 gui_wv_zoom_timerange -id  Wave.1 1634061697478531 1780494924951149
+gui_marker_move -id  Wave.1 C1 1658955943551043
+gui_close_window -window TopLevel.2
