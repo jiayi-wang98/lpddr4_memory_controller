@@ -1,3 +1,0 @@
-#!/bin/csh -fb
-rm -rf csrc simv*
-vcs -timescale=1ns/10ps -full64 -f ./refresher_tb.f -sverilog +v2k -R -debug_pp +lint=all
