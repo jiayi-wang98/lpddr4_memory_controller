@@ -1,3 +1,27 @@
+parameter [2:0] AHB_SIZE_BYTE      = 3'b000;
+parameter [2:0] AHB_SIZE_HWORD     = 3'b001;
+parameter [2:0] AHB_SIZE_WORD      = 3'b010;
+parameter [2:0] AHB_SIZE_DWORD     = 3'b011;
+parameter [2:0] AHB_SIZE_BIT128    = 3'b100;
+parameter [2:0] AHB_SIZE_BIT256    = 3'b101;
+parameter [2:0] AHB_SIZE_BIT512    = 3'b110;
+
+parameter [2:0] AHB_BURST_SINGLE   = 3'b000;
+parameter [2:0] AHB_BURST_INCR     = 3'b001;
+parameter [2:0] AHB_BURST_INCR4    = 3'b011;
+parameter [2:0] AHB_BURST_INCR8    = 3'b101;
+parameter [2:0] AHB_BURST_INCR16   = 3'b111;
+
+parameter [1:0] AHB_TRANS_IDLE     = 2'b00;
+parameter [1:0] AHB_TRANS_BUSY     = 2'b01;
+parameter [1:0] AHB_TRANS_NONSEQ   = 2'b10;
+parameter [1:0] AHB_TRANS_SEQ      = 2'b11;
+
+parameter [1:0] AHB_RESP_OK        = 2'b00;
+parameter [1:0] AHB_RESP_ERROR     = 2'b01;
+parameter [1:0] AHB_RESP_RETRY     = 2'b10;
+parameter [1:0] AHB_RESP_SPLIT     = 2'b11;
+
 module mc_ahb_csr (
    input   logic                i_sysclk,
    input   logic                i_sysrst,
@@ -43,7 +67,7 @@ module mc_ahb_csr (
    output  logic [4:0] o_crb_READ_LATENCY_cfg,
    output  logic [4:0] o_crb_WRITE_LATENCY_cfg
 );
-
+   """
    logic                               async_hgrant;
    logic [31:0]                        async_haddr;
    logic                               async_hwrite;
@@ -55,6 +79,7 @@ module mc_ahb_csr (
    logic                               async_hready;
    logic [31:0]                        async_hrdata;
    logic [1:0]                         async_hresp;
+   """
 
    logic                               mc_hgrant;
    logic [31:0]                        mc_haddr;
@@ -68,7 +93,7 @@ module mc_ahb_csr (
    logic [31:0]                        mc_hrdata;
    logic [1:0]                         mc_hresp;
 
-
+   """
    mc_ahb_slave2master #(
       .AWIDTH  (32)
    ) u_mc_ahbm_s2m (
@@ -99,7 +124,12 @@ module mc_ahb_csr (
       .i_ahbm_hresp                    (async_hresp )
    );
 
+   assign o_hgrant=async_hgrant;
+   """
    // AHB Sync block AHB Ext Clock to hclk
+   logic hbusreq;
+   assign hbusreq=i_hsel&i_hreadyin;
+
    mc_ahb2ahb_sync #(
       .AWIDTH     (32),
       .ASYNC      (1)
@@ -113,17 +143,17 @@ module mc_ahb_csr (
       .i_m2_hclk                     (i_sysclk),
       .i_m2_hreset                   (i_sysrst),
 
-      .i_m1_haddr                    (async_haddr ),
-      .i_m1_hwrite                   (async_hwrite),
-      .i_m1_hbusreq                  (async_hbusreq),
-      .i_m1_hwdata                   (async_hwdata),
-      .i_m1_htrans                   (async_htrans),
-      .i_m1_hsize                    (async_hsize ),
-      .i_m1_hburst                   (async_hburst),
-      .o_m1_hready                   (async_hready),
-      .o_m1_hrdata                   (async_hrdata),
-      .o_m1_hresp                    (async_hresp ),
-      .o_m1_hgrant                   (async_hgrant),
+      .i_m1_haddr                    (i_haddr ),
+      .i_m1_hwrite                   (i_hwrite),
+      .i_m1_hbusreq                  (hbusreq),
+      .i_m1_hwdata                   (i_hwdata),
+      .i_m1_htrans                   (i_htrans),
+      .i_m1_hsize                    (i_hsize ),
+      .i_m1_hburst                   (i_hburst),
+      .o_m1_hready                   (o_hready),
+      .o_m1_hrdata                   (o_hrdata),
+      .o_m1_hresp                    (o_hresp ),
+      .o_m1_hgrant                   (o_hgrant),
       .o_m1_clkon                    (/*OPEN*/),//FIXME
       .o_m2_clkon                    (/*OPEN*/),//FIXME
 
@@ -377,7 +407,7 @@ typedef enum logic [3:0] {
 
 endmodule
 
-
+"""
 module mc_ahb_slave2master #(
    parameter AWIDTH = 32
 ) (
@@ -451,7 +481,7 @@ module mc_ahb_slave2master #(
    assign o_ahbs_hresp   = i_ahbm_hresp;
 
 endmodule
-
+"""
 module mc_ahb_slave #(
    parameter AWIDTH = 32,
    parameter DWIDTH = 32
