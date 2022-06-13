@@ -1,0 +1,6 @@
+*.log
+*.vpd
+*.nfs*
+verif/csrc
+verif/DVEfiels
+*.daidir
