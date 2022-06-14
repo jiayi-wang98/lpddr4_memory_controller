@@ -33,9 +33,9 @@ module wb2native(
 );
 
 wire flush;
-reg aborted = 1'd0;
+reg aborted;
 reg is_ongoing;
-reg [1:0] state = 2'd0;
+reg [1:0] state;
 reg [1:0] next_state;
 reg aborted_next_value;
 reg aborted_next_value_ce;
@@ -75,7 +75,7 @@ reg dummy_d_1;
 always @(*) begin
 	wishbone_port_dat_r <= 256'd0;
 	wishbone_port_ack <= 1'd0;
-	cmd_valid <= 1'd0;
+	//cmd_valid <= 1'd0;
 	is_ongoing <= 1'd0;
 	next_state <= 2'd0;
 	aborted_next_value <= 1'd0;
@@ -84,6 +84,7 @@ always @(*) begin
 	case (state)
 		1'd1: begin
 			is_ongoing <= 1'd1;
+			cmd_valid <= 1'd0;
 			aborted_next_value <= ((~wishbone_port_cyc) | aborted);
 			aborted_next_value_ce <= 1'd1;
 			if ((wdata_valid & wdata_ready)) begin
@@ -92,6 +93,7 @@ always @(*) begin
 			end
 		end
 		2'd2: begin
+			cmd_valid <= 1'd0;
 			aborted_next_value <= ((~wishbone_port_cyc) | aborted);
 			aborted_next_value_ce <= 1'd1;
 			if (rdata_valid) begin

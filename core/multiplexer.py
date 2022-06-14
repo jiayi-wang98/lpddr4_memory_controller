@@ -229,7 +229,7 @@ class Multiplexer(Module, AutoCSR):
         self.tFAW=Signal(max=255,reset_less=True,name="mul_tFAW_cfg")
         self.tCCD=Signal(max=255,reset_less=True,name="mul_tCCD_cfg")
         self.WTR_LATENCY=Signal(max=255,reset_less=True,name="mul_WTR_LATENCY_cfg")
-        self.RTW_LATENCY=Signal(max=255,reset_less=True,name="mul_RTW_LATENCT_cfg")
+        self.RTW_LATENCY=Signal(max=255,reset_less=True,name="mul_RTW_LATENCY_cfg")
         self.read_time=Signal(max=255,reset_less=True,name="mul_READ_TIME_cfg")
         self.write_time=Signal(max=255,reset_less=True,name="mul_WRITE_TIME_cfg")
         # Read/Write Cmd/Dat phases ----------------------------------------------------------------

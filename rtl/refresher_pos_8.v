@@ -24,7 +24,7 @@ wire timer_done1;
 reg [11:0] timer_count1 = 12'd0;
 wire postponer_req_i;
 reg postponer_req_o = 1'd0;
-reg [3:0] postponer_count = (ref_POSTPONE_cfg - 1'd1);
+reg [3:0] postponer_count = 4'd8;
 reg sequencer_start0;
 wire sequencer_done0;
 wire sequencer_start1;

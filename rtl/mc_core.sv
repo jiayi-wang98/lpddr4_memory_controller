@@ -85,7 +85,7 @@ module mc_core(
 	input [2:0] axi_aw_payload_prot,
 	input [3:0] axi_aw_payload_cache,
 	input [3:0] axi_aw_payload_qos,
-	input axi_aw_payload_id,
+	input [3:0] axi_aw_payload_id,
 
 	//axi w channel
 	input axi_w_valid,
@@ -94,7 +94,7 @@ module mc_core(
 	input axi_w_last,
 	input [255:0] axi_w_payload_data,
 	input [31:0] axi_w_payload_strb,
-	input axi_w_payload_id,
+	input [3:0] axi_w_payload_id,
 
 	//axi b channel
 	output axi_b_valid,
@@ -102,7 +102,7 @@ module mc_core(
 	output axi_b_first,
 	output axi_b_last,
 	output [1:0] axi_b_payload_resp,
-	output axi_b_payload_id,
+	output [3:0] axi_b_payload_id,
 
 	//axi ar channel
 	input axi_ar_valid,
@@ -117,7 +117,7 @@ module mc_core(
 	input [2:0] axi_ar_payload_prot,
 	input [3:0] axi_ar_payload_cache,
 	input [3:0] axi_ar_payload_qos,
-	input axi_ar_payload_id,
+	input [3:0] axi_ar_payload_id,
 
 	//axi r channel
 	output axi_r_valid,
@@ -126,7 +126,7 @@ module mc_core(
 	output axi_r_last,
 	output reg [1:0] axi_r_payload_resp,
 	output [255:0] axi_r_payload_data,
-	output axi_r_payload_id,
+	output [3:0] axi_r_payload_id,
 
 	//wishbone bus
 	input [31:0] wishbone_port_adr,
@@ -142,23 +142,20 @@ module mc_core(
 	input wishbone_port_err,
 
 	//ahb bus
-	input   logic                i_sysclk,
-   	input   logic                i_sysrst,
-
-   	input   logic                i_ahb_extclk,
-   	input   logic                i_ahb_extrst,
-   	input   logic [31:0]         i_haddr,
-   	input   logic                i_hwrite,
-   	input   logic                i_hsel,
-   	input   logic                i_hreadyin,
-   	input   logic [31:0]         i_hwdata,
-   	input   logic [1:0]          i_htrans,
-   	input   logic [2:0]          i_hsize,
-   	input   logic [2:0]          i_hburst,
-   	output  logic                o_hready,
-   	output  logic [31:0]         o_hrdata,
-   	output  logic [1:0]          o_hresp,
-   	output  logic                o_hgrant,
+   	input                  i_ahb_extclk,
+   	input                  i_ahb_extrst,
+   	input   [31:0]         i_haddr,
+   	input                  i_hwrite,
+   	input                  i_hsel,
+   	input                  i_hreadyin,
+   	input   [31:0]         i_hwdata,
+   	input   [1:0]          i_htrans,
+   	input   [2:0]          i_hsize,
+   	input   [2:0]          i_hburst,
+   	output                 o_hready,
+   	output  [31:0]         o_hrdata,
+   	output  [1:0]          o_hresp,
+   	output                 o_hgrant,
 
 	//system clock/reset
 	input sys_clk,
@@ -1131,11 +1128,11 @@ multiplexer_b8 u_multiplexer_b8 (
     .mul_tFAW_cfg              (mul_tFAW_cfg),
     .mul_tCCD_cfg              (mul_tCCD_cfg),
     .mul_WTR_LATENCY_cfg       (mul_WTR_LATENCY_cfg),
-    .mul_RTW_LATENCT_cfg       (mul_RTW_LATENCT_cfg),
+    .mul_RTW_LATENCY_cfg       (mul_RTW_LATENCY_cfg),
     .mul_READ_TIME_cfg         (mul_READ_TIME_cfg),
     .mul_WRITE_TIME_cfg        (mul_WRITE_TIME_cfg),
-    .mul_rd_phase_cfg          (mul_rd_phase_cfg),
-    .mul_wr_phase_cfg          (mul_wr_phase_cfg),
+    .mul_rd_phase_cfg          (mul_rdphase_cfg),
+    .mul_wr_phase_cfg          (mul_wrphase_cfg),
     .mul_rdcmd_phase_cfg       (mul_rdcmd_phase_cfg),
     .mul_wrcmd_phase_cfg       (mul_wrcmd_phase_cfg),
     .sys_clk                   (sys_clk),

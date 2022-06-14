@@ -67,7 +67,7 @@ module mc_ahb_csr (
    output  logic [4:0] o_crb_READ_LATENCY_cfg,
    output  logic [4:0] o_crb_WRITE_LATENCY_cfg
 );
-   """
+   /*
    logic                               async_hgrant;
    logic [31:0]                        async_haddr;
    logic                               async_hwrite;
@@ -81,18 +81,7 @@ module mc_ahb_csr (
    logic [1:0]                         async_hresp;
    """
 
-   logic                               mc_hgrant;
-   logic [31:0]                        mc_haddr;
-   logic                               mc_hwrite;
-   logic                               mc_hbusreq;
-   logic [31:0]                        mc_hwdata;
-   logic [1:0]                         mc_htrans;
-   logic [2:0]                         mc_hsize;
-   logic [2:0]                         mc_hburst;
-   logic                               mc_hready;
-   logic [31:0]                        mc_hrdata;
-   logic [1:0]                         mc_hresp;
-
+   
    """
    mc_ahb_slave2master #(
       .AWIDTH  (32)
@@ -125,7 +114,19 @@ module mc_ahb_csr (
    );
 
    assign o_hgrant=async_hgrant;
-   """
+   */
+   logic                               mc_hgrant;
+   logic [31:0]                        mc_haddr;
+   logic                               mc_hwrite;
+   logic                               mc_hbusreq;
+   logic [31:0]                        mc_hwdata;
+   logic [1:0]                         mc_htrans;
+   logic [2:0]                         mc_hsize;
+   logic [2:0]                         mc_hburst;
+   logic                               mc_hready;
+   logic [31:0]                        mc_hrdata;
+   logic [1:0]                         mc_hresp;
+
    // AHB Sync block AHB Ext Clock to hclk
    logic hbusreq;
    assign hbusreq=i_hsel&i_hreadyin;
@@ -171,8 +172,16 @@ module mc_ahb_csr (
    );
 
    logic mc_hsel;
-   assign mc_hsel=(mc_haddr>=0x02000000) & (mc_haddr<=0x02000010)? 1'b1:1'b0;
+   assign mc_hsel=(mc_haddr>=32'h02000000) & (mc_haddr<=32'h02000010)? 1'b1:1'b0;
    
+   logic                slv_write;
+   logic                slv_read;
+   logic                slv_error;
+   logic [31:0]         slv_addr;
+   logic [31:0]         slv_wdata;
+   logic [31:0]         slv_rdata;
+   logic                slv_ready;
+
    mc_ahb_slave #(
       .AWIDTH(32),
       .DWIDTH(32)
@@ -199,13 +208,7 @@ module mc_ahb_csr (
       .i_ready    (slv_ready)
    );
 
-   logic                slv_write;
-   logic                slv_read;
-   logic                slv_error;
-   logic [31:0]         slv_addr;
-   logic [31:0]         slv_wdata;
-   logic [31:0]         slv_rdata;
-   logic                slv_ready;
+   
 
    mc_csr #(
       .AWIDTH(32),
@@ -250,7 +253,7 @@ endmodule
 
 module mc_csr #(
    parameter AWIDTH = 32,
-   parameter DWIDTH = 32,
+   parameter DWIDTH = 32
 ) (
    input   logic                i_hclk,
    input   logic                i_hreset,
@@ -305,11 +308,11 @@ typedef enum logic [3:0] {
    always_comb begin
       o_error = 1'b0;
       case (i_addr)
-         0x02000000 : decode = DECODE_MC_MUL_TIMING_CFG;
-         0x02000004 : decode = DECODE_MC_MUL_LATENCY_CFG;
-         0x02000008 : decode = DECODE_MC_REF_TIMING_CFG;
-         0x0200000C : decode = DECODE_MC_BM_TIMING_CFG;
-         0x02000010 : decode = DECODE_MC_BM_CRB_CFG;
+         32'h02000000 : decode = DECODE_MC_MUL_TIMING_CFG;
+         32'h02000004 : decode = DECODE_MC_MUL_LATENCY_CFG;
+         32'h02000008 : decode = DECODE_MC_REF_TIMING_CFG;
+         32'h0200000C : decode = DECODE_MC_BM_TIMING_CFG;
+         32'h02000010 : decode = DECODE_MC_BM_CRB_CFG;
          default : begin 
             decode = DECODE_NOOP_0;
             o_error = 1'b1;
@@ -320,7 +323,7 @@ typedef enum logic [3:0] {
    logic [31:0] mc_mul_timing_cfg_q;
    always_ff @( posedge i_hclk, posedge i_hreset)
       if (i_hreset)
-         mc_mul_timing_cfg_q <= 0x08170702 ;
+         mc_mul_timing_cfg_q <= 32'h08170702 ;
       else
          if (i_write)
             if (decode == DECODE_MC_MUL_TIMING_CFG)
@@ -338,7 +341,7 @@ typedef enum logic [3:0] {
    logic [31:0] mc_mul_latency_cfg_q;
    always_ff @( posedge i_hclk, posedge i_hreset)
       if (i_hreset)
-         mc_mul_latency_cfg_q <= 0x4080520;
+         mc_mul_latency_cfg_q <= 32'h4080520;
       else
          if (i_write)
             if (decode ==DECODE_MC_MUL_LATENCY_CFG)
@@ -353,21 +356,21 @@ typedef enum logic [3:0] {
    logic [31:0] mc_ref_timing_cfg_q;
    always_ff @( posedge i_hclk, posedge i_hreset)
       if (i_hreset)
-         mc_ref_timing_cfg_q <= 0x610C8823;
+         mc_ref_timing_cfg_q <= 32'h610C8823;
       else
          if (i_write)
             if (decode == DECODE_MC_REF_TIMING_CFG)
                mc_ref_timing_cfg_q <= i_wdata;
 
-   assign o_ref_tREFI_cfg = mc_ref_timing_cfg_q[7:0];
-   assign o_ref_POSTPONE_cfg = mc_ref_timing_cfg_q[15:8];
+   assign o_ref_tREFI_cfg = mc_ref_timing_cfg_q[11:0];
+   assign o_ref_POSTPONE_cfg = mc_ref_timing_cfg_q[15:12];
    assign o_ref_tRP_cfg = mc_ref_timing_cfg_q[23:16];
    assign o_ref_tRFC_cfg = mc_ref_timing_cfg_q[31:24];
 
    logic [31:0] mc_bm_timing_cfg_q;
    always_ff @( posedge i_hclk, posedge i_hreset)
       if (i_hreset)
-         mc_bm_timing_cfg_q <= 0x0C231830;
+         mc_bm_timing_cfg_q <= 32'h0C231830;
       else
          if (i_write)
             if (decode == DECODE_MC_BM_TIMING_CFG)
@@ -381,7 +384,7 @@ typedef enum logic [3:0] {
    logic [31:0] mc_bm_crb_cfg_q;
    always_ff @( posedge i_hclk, posedge i_hreset)
       if (i_hreset)
-         mc_bm_crb_cfg_q <= 0x001980B;
+         mc_bm_crb_cfg_q <= 32'h001980B;
       else
          if (i_write)
             if (decode == DECODE_MC_BM_CRB_CFG)
@@ -407,7 +410,7 @@ typedef enum logic [3:0] {
 
 endmodule
 
-"""
+/*
 module mc_ahb_slave2master #(
    parameter AWIDTH = 32
 ) (
@@ -481,7 +484,7 @@ module mc_ahb_slave2master #(
    assign o_ahbs_hresp   = i_ahbm_hresp;
 
 endmodule
-"""
+*/
 module mc_ahb_slave #(
    parameter AWIDTH = 32,
    parameter DWIDTH = 32
@@ -768,6 +771,13 @@ module mc_ahb2ahb_sync #(
                  rsp_fifo_rd     = 1'b1 ;
               end
            end
+            default:begin
+               reqwr_state_d = reqwr_state_q ;
+               req_fifo_wr   = '0 ;
+               reqd_fifo_wr  = '0 ;
+               rsp_fifo_rd   = '0 ;
+               hready        = ~wrreq_fifo_full ;
+            end
         endcase
      end
 
@@ -1003,6 +1013,12 @@ module mc_ahb2ahb_sync #(
                  reqrd_state_d  = IDLE ;
               end
            end
+           default:begin
+            reqrd_state_d  = reqrd_state_q ;
+            req_fifo_rd    = '0 ;
+            reqd_fifo_rd   = '0 ;
+            rsp_fifo_wr    = '0 ;
+           end
         endcase
      end
 
@@ -1126,7 +1142,7 @@ module mc_fifo #(
    // ------------------------------------------------------------------------
 
    // Choose Flip-Flop register file or RAM model
-"""
+   /*
    generate
       if (!RAM_MODEL) begin : REGFILE
          logic [RWIDTH-1:0] mem [DEPTH-1:0];
@@ -1147,7 +1163,7 @@ module mc_fifo #(
             .i_we_0     (1'b1),
             .i_be_0     ('1),
             .i_wdata_0  (i_wdata),
-            .o_rdata_0  (/*OPEN*/),
+            .o_rdata_0  (),
             .i_clk_1    (rclk_g),
             .i_addr_1   (raddr),
             .i_en_1     (1'b1),
@@ -1158,7 +1174,7 @@ module mc_fifo #(
          );
       end
    endgenerate
-"""
+   */
    logic [RWIDTH-1:0] mem [DEPTH-1:0];
    always_ff @(posedge i_wclk)
       if (i_write)
@@ -1271,7 +1287,7 @@ module mc_demet_r #(
 );
 
    logic [DWIDTH-1:0] q0;
-   always_ff(posedge i_clk) begin 
+   always_ff@(posedge i_clk) begin 
       if(i_rst) begin 
          q0<='d0;
          o_q<='d0;

@@ -69,7 +69,7 @@ module mc_top(
 	input [2:0] axi_aw_payload_prot,
 	input [3:0] axi_aw_payload_cache,
 	input [3:0] axi_aw_payload_qos,
-	input axi_aw_payload_id,
+	input [3:0]axi_aw_payload_id,
 
 	//axi w channel
 	input axi_w_valid,
@@ -78,7 +78,7 @@ module mc_top(
 	input axi_w_last,
 	input [255:0] axi_w_payload_data,
 	input [31:0] axi_w_payload_strb,
-	input axi_w_payload_id,
+	input [3:0]axi_w_payload_id,
 
 	//axi b channel
 	output axi_b_valid,
@@ -86,7 +86,7 @@ module mc_top(
 	output axi_b_first,
 	output axi_b_last,
 	output [1:0] axi_b_payload_resp,
-	output axi_b_payload_id,
+	output [3:0]axi_b_payload_id,
 
 	//axi ar channel
 	input axi_ar_valid,
@@ -101,7 +101,7 @@ module mc_top(
 	input [2:0] axi_ar_payload_prot,
 	input [3:0] axi_ar_payload_cache,
 	input [3:0] axi_ar_payload_qos,
-	input axi_ar_payload_id,
+	input [3:0]axi_ar_payload_id,
 
 	//axi r channel
 	output axi_r_valid,
@@ -110,7 +110,7 @@ module mc_top(
 	output axi_r_last,
 	output reg [1:0] axi_r_payload_resp,
 	output [255:0] axi_r_payload_data,
-	output axi_r_payload_id,
+	output [3:0]axi_r_payload_id,
 
 	//wishbone bus
 	input [31:0] wishbone_port_adr,
@@ -126,9 +126,6 @@ module mc_top(
 	input wishbone_port_err,
 
 	//ahb bus
-	input   logic                i_sysclk,
-   	input   logic                i_sysrst,
-
    	input   logic                i_ahb_extclk,
    	input   logic                i_ahb_extrst,
    	input   logic [31:0]         i_haddr,
@@ -293,8 +290,7 @@ mc_core u_mc_core (
     .wishbone_bte            (wishbone_port_bte),
     .wishbone_err            (wishbone_port_err),
     //ahb bus
-	.i_sysclk                (i_sysclk),
-    .i_sysrst                (i_sysrst),
+
     .i_ahb_extclk            (i_ahb_extclk),
     .i_ahb_extrst            (i_ahb_extrst),
     .i_haddr                 (i_haddr),
