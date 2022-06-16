@@ -6,24 +6,68 @@ module DFIAdapter(
 	input dfi_p0_cs_n,
 	input dfi_p0_ras_n,
 	input dfi_p0_we_n,
+	input dfi_p0_cke,
+	input dfi_p0_odt,
+	input dfi_p0_reset_n,
+	input dfi_p0_act_n,
+	input dfi_p0_mw,
+	input [63:0] dfi_p0_wrdata,
+	input dfi_p0_wrdata_en,
+	input [7:0] dfi_p0_wrdata_mask,
+	input dfi_p0_rddata_en,
+	input [63:0] dfi_p0_rddata,
+	input dfi_p0_rddata_valid,
 	input [16:0] dfi_p1_address,
 	input [5:0] dfi_p1_bank,
 	input dfi_p1_cas_n,
 	input dfi_p1_cs_n,
 	input dfi_p1_ras_n,
 	input dfi_p1_we_n,
+	input dfi_p1_cke,
+	input dfi_p1_odt,
+	input dfi_p1_reset_n,
+	input dfi_p1_act_n,
+	input dfi_p1_mw,
+	input [63:0] dfi_p1_wrdata,
+	input dfi_p1_wrdata_en,
+	input [7:0] dfi_p1_wrdata_mask,
+	input dfi_p1_rddata_en,
+	input [63:0] dfi_p1_rddata,
+	input dfi_p1_rddata_valid,
 	input [16:0] dfi_p2_address,
 	input [5:0] dfi_p2_bank,
 	input dfi_p2_cas_n,
 	input dfi_p2_cs_n,
 	input dfi_p2_ras_n,
 	input dfi_p2_we_n,
+	input dfi_p2_cke,
+	input dfi_p2_odt,
+	input dfi_p2_reset_n,
+	input dfi_p2_act_n,
+	input dfi_p2_mw,
+	input [63:0] dfi_p2_wrdata,
+	input dfi_p2_wrdata_en,
+	input [7:0] dfi_p2_wrdata_mask,
+	input dfi_p2_rddata_en,
+	input [63:0] dfi_p2_rddata,
+	input dfi_p2_rddata_valid,
 	input [16:0] dfi_p3_address,
 	input [5:0] dfi_p3_bank,
 	input dfi_p3_cas_n,
 	input dfi_p3_cs_n,
 	input dfi_p3_ras_n,
 	input dfi_p3_we_n,
+	input dfi_p3_cke,
+	input dfi_p3_odt,
+	input dfi_p3_reset_n,
+	input dfi_p3_act_n,
+	input dfi_p3_mw,
+	input [63:0] dfi_p3_wrdata,
+	input dfi_p3_wrdata_en,
+	input [7:0] dfi_p3_wrdata_mask,
+	input dfi_p3_rddata_en,
+	input [63:0] dfi_p3_rddata,
+	input dfi_p3_rddata_valid,
 	output [3:0] cs,
 	output [3:0] ca,
 	output [3:0] ca_1,
@@ -490,7 +534,7 @@ always @(*) begin
 				dfiphaseadapter0_valid <= 1'd1;
 			end
 			3'd5: begin
-				case (1'd1)
+				case (dfi_p0_mw)
 					1'd0: begin
 						dfiphaseadapter0_command00[0] <= 1'd0;
 						dfiphaseadapter0_command00[1] <= 1'd0;
@@ -847,7 +891,7 @@ always @(*) begin
 				dfiphaseadapter1_valid <= 1'd1;
 			end
 			3'd5: begin
-				case (1'd1)
+				case (dfi_p1_mw)
 					1'd0: begin
 						dfiphaseadapter1_command10[0] <= 1'd0;
 						dfiphaseadapter1_command10[1] <= 1'd0;
@@ -1204,7 +1248,7 @@ always @(*) begin
 				dfiphaseadapter2_valid <= 1'd1;
 			end
 			3'd5: begin
-				case (1'd1)
+				case (dfi_p2_mw)
 					1'd0: begin
 						dfiphaseadapter2_command20[0] <= 1'd0;
 						dfiphaseadapter2_command20[1] <= 1'd0;
@@ -1561,7 +1605,7 @@ always @(*) begin
 				dfiphaseadapter3_valid <= 1'd1;
 			end
 			3'd5: begin
-				case (1'd1)
+				case (dfi_p3_mw)
 					1'd0: begin
 						dfiphaseadapter3_command30[0] <= 1'd0;
 						dfiphaseadapter3_command30[1] <= 1'd0;

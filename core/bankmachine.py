@@ -102,19 +102,20 @@ class BankMachine(Module):
         self.tRAS=Signal(max=255,reset_less=True,name="bm_tRAS_cfg")
         self.tRP=Signal(max=255,reset_less=True,name="bm_tRP_cfg")
         self.tRCD=Signal(max=255,reset_less=True,name="bm_tRCD_cfg")
+        self.tCCDMW=Signal(max=255,reset_less=True,name="bm_tRCD_cfg")
         #self.read_time=Signal(max=255,reset_less=True,name="mul_READ_TIME_cfg")
         #self.write_time=Signal(max=255,reset_less=True,name="mul_WRITE_TIME_cfg")
         auto_precharge = Signal()
 
         # Command buffer ---------------------------------------------------------------------------
-        cmd_buffer_layout    = [("we", 1), ("addr", len(req.addr))]
+        cmd_buffer_layout    = [("we", 1), ("mw",1),("addr", len(req.addr))]
         cmd_buffer_lookahead = stream.SyncFIFO(
             cmd_buffer_layout, settings.cmd_buffer_depth,
             buffered=settings.cmd_buffer_buffered)
         cmd_buffer = stream.Buffer(cmd_buffer_layout) # 1 depth buffer to detect row change
         self.submodules += cmd_buffer_lookahead, cmd_buffer
         self.comb += [
-            req.connect(cmd_buffer_lookahead.sink, keep={"valid", "ready", "we", "addr"}),
+            req.connect(cmd_buffer_lookahead.sink, keep={"valid", "ready", "we","mw", "addr"}),
             cmd_buffer_lookahead.source.connect(cmd_buffer.sink),
             cmd_buffer.source.ready.eq(req.wdata_ready | req.rdata_valid),
             req.lock.eq(cmd_buffer_lookahead.source.valid | cmd_buffer.source.valid),
@@ -148,6 +149,9 @@ class BankMachine(Module):
                 cmd.a.eq((auto_precharge << 10) | slicer.col(cmd_buffer.source.addr))
             )
         ]
+        # tCCDMW (masked-write) controller -----------------------------------------------------
+        self.submodules.tccdmwcon = tccdmwcon = tXXDController(self.tCCDMW)
+        self.comb += tccdmwcon.valid.eq(cmd.valid & cmd.ready & cmd.is_write & cmd.is_mw)
 
         # tWTP (write-to-precharge) controller -----------------------------------------------------
         """
@@ -190,12 +194,19 @@ class BankMachine(Module):
                 NextState("REFRESH")
             ).Elif(cmd_buffer.source.valid,
                 If(row_opened,
-                    If(row_hit,
+                    If(row_hit & tccdmwcon.ready,
                         cmd.valid.eq(1),
                         If(cmd_buffer.source.we,
-                            req.wdata_ready.eq(cmd.ready),
-                            cmd.is_write.eq(1),
-                            cmd.we.eq(1),
+                            If(cmd_buffer.source.mw,
+                                cmd.is_mw.eq(1),
+                                req.wdata_ready.eq(cmd.ready),
+                                cmd.is_write.eq(1),
+                                cmd.we.eq(1),
+                                If(cmd.ready,NextState("MW"))
+                                ).Else(
+                                    req.wdata_ready.eq(cmd.ready),
+                                    cmd.is_write.eq(1),
+                                    cmd.we.eq(1))
                         ).Else(
                             req.rdata_valid.eq(cmd.ready),
                             cmd.is_read.eq(1)
@@ -225,6 +236,11 @@ class BankMachine(Module):
                 cmd.is_cmd.eq(1)
             ),
             row_close.eq(1)
+        )
+        fsm.act("MW",
+            If(tccdmwcon.ready,
+                NextState("REGULAR")
+            )
         )
         fsm.act("AUTOPRECHARGE",
             If(twtpcon.ready & trascon.ready,

@@ -13,6 +13,7 @@ module multiplexer_b8(
 	output dfi_p0_odt,
 	output dfi_p0_reset_n,
 	input dfi_p0_act_n,
+	output reg dfi_p0_mw,
 	output [63:0] dfi_p0_wrdata,
 	output reg dfi_p0_wrdata_en,
 	output [7:0] dfi_p0_wrdata_mask,
@@ -29,6 +30,7 @@ module multiplexer_b8(
 	output dfi_p1_odt,
 	output dfi_p1_reset_n,
 	input dfi_p1_act_n,
+	output reg dfi_p1_mw,
 	output [63:0] dfi_p1_wrdata,
 	output reg dfi_p1_wrdata_en,
 	output [7:0] dfi_p1_wrdata_mask,
@@ -45,6 +47,7 @@ module multiplexer_b8(
 	output dfi_p2_odt,
 	output dfi_p2_reset_n,
 	input dfi_p2_act_n,
+	output reg dfi_p2_mw,
 	output [63:0] dfi_p2_wrdata,
 	output reg dfi_p2_wrdata_en,
 	output [7:0] dfi_p2_wrdata_mask,
@@ -61,6 +64,7 @@ module multiplexer_b8(
 	output dfi_p3_odt,
 	output dfi_p3_reset_n,
 	input dfi_p3_act_n,
+	output reg dfi_p3_mw,
 	output [63:0] dfi_p3_wrdata,
 	output reg dfi_p3_wrdata_en,
 	output [7:0] dfi_p3_wrdata_mask,
@@ -79,6 +83,7 @@ module multiplexer_b8(
 	input cmd_payload_is_cmd,
 	input cmd_payload_is_read,
 	input cmd_payload_is_write,
+	input cmd_payload_is_mw,
 	output refresh_req,
 	input refresh_gnt,
 	input cmd_valid_1,
@@ -93,6 +98,7 @@ module multiplexer_b8(
 	input cmd_payload_is_cmd_1,
 	input cmd_payload_is_read_1,
 	input cmd_payload_is_write_1,
+	input cmd_payload_is_mw_1,
 	output refresh_req_1,
 	input refresh_gnt_1,
 	input cmd_valid_2,
@@ -107,6 +113,7 @@ module multiplexer_b8(
 	input cmd_payload_is_cmd_2,
 	input cmd_payload_is_read_2,
 	input cmd_payload_is_write_2,
+	input cmd_payload_is_mw_2,
 	output refresh_req_2,
 	input refresh_gnt_2,
 	input cmd_valid_3,
@@ -121,6 +128,7 @@ module multiplexer_b8(
 	input cmd_payload_is_cmd_3,
 	input cmd_payload_is_read_3,
 	input cmd_payload_is_write_3,
+	input cmd_payload_is_mw_3,
 	output refresh_req_3,
 	input refresh_gnt_3,
 	input cmd_valid_4,
@@ -135,6 +143,7 @@ module multiplexer_b8(
 	input cmd_payload_is_cmd_4,
 	input cmd_payload_is_read_4,
 	input cmd_payload_is_write_4,
+	input cmd_payload_is_mw_4,
 	output refresh_req_4,
 	input refresh_gnt_4,
 	input cmd_valid_5,
@@ -149,6 +158,7 @@ module multiplexer_b8(
 	input cmd_payload_is_cmd_5,
 	input cmd_payload_is_read_5,
 	input cmd_payload_is_write_5,
+	input cmd_payload_is_mw_5,
 	output refresh_req_5,
 	input refresh_gnt_5,
 	input cmd_valid_6,
@@ -163,6 +173,7 @@ module multiplexer_b8(
 	input cmd_payload_is_cmd_6,
 	input cmd_payload_is_read_6,
 	input cmd_payload_is_write_6,
+	input cmd_payload_is_mw_6,
 	output refresh_req_6,
 	input refresh_gnt_6,
 	input cmd_valid_7,
@@ -177,6 +188,7 @@ module multiplexer_b8(
 	input cmd_payload_is_cmd_7,
 	input cmd_payload_is_read_7,
 	input cmd_payload_is_write_7,
+	input cmd_payload_is_mw_7,
 	output refresh_req_7,
 	input refresh_gnt_7,
 	input cmd_valid_8,
@@ -191,11 +203,12 @@ module multiplexer_b8(
 	input cmd_payload_is_cmd_8,
 	input cmd_payload_is_read_8,
 	input cmd_payload_is_write_8,
+	input cmd_payload_is_mw_8,
 	input [7:0] mul_tRRD_cfg,
 	input [7:0] mul_tFAW_cfg,
 	input [7:0] mul_tCCD_cfg,
 	input [7:0] mul_WTR_LATENCY_cfg,
-	input [7:0] mul_RTW_LATENCY_cfg,
+	input [7:0] mul_RTW_LATENCT_cfg,
 	input [7:0] mul_READ_TIME_cfg,
 	input [7:0] mul_WRITE_TIME_cfg,
 	input [1:0] mul_rd_phase_cfg,
@@ -240,6 +253,7 @@ reg choose_req_cmd_payload_we;
 wire choose_req_cmd_payload_is_cmd;
 wire choose_req_cmd_payload_is_read;
 wire choose_req_cmd_payload_is_write;
+reg choose_req_cmd_payload_is_mw = 1'd0;
 reg [7:0] choose_req_valids;
 wire [7:0] choose_req_request;
 reg [2:0] choose_req_grant = 3'd0;
@@ -252,12 +266,20 @@ reg [1:0] steerer_sel2;
 reg [1:0] steerer_sel3;
 reg steerer0 = 1'd1;
 reg steerer1 = 1'd1;
+reg steerer_rddata_en_dly0 = 1'd0;
+reg steerer_wrdata_en_dly0 = 1'd0;
 reg steerer2 = 1'd1;
 reg steerer3 = 1'd1;
+reg steerer_rddata_en_dly1 = 1'd0;
+reg steerer_wrdata_en_dly1 = 1'd0;
 reg steerer4 = 1'd1;
 reg steerer5 = 1'd1;
+reg steerer_rddata_en_dly2 = 1'd0;
+reg steerer_wrdata_en_dly2 = 1'd0;
 reg steerer6 = 1'd1;
 reg steerer7 = 1'd1;
+reg steerer_rddata_en_dly3 = 1'd0;
+reg steerer_wrdata_en_dly3 = 1'd0;
 wire trrdcon_valid;
 (* no_retiming = "true" *) reg trrdcon_ready = 1'd0;
 reg [7:0] trrdcon_count = 8'd0;
@@ -311,27 +333,39 @@ reg array_muxed3;
 reg array_muxed4;
 reg array_muxed5;
 reg array_muxed6;
-reg [2:0] array_muxed7;
-reg [16:0] array_muxed8;
+reg array_muxed7;
+reg array_muxed8;
 reg array_muxed9;
-reg array_muxed10;
-reg array_muxed11;
+reg [2:0] array_muxed10;
+reg [16:0] array_muxed11;
 reg array_muxed12;
 reg array_muxed13;
-reg [2:0] array_muxed14;
-reg [16:0] array_muxed15;
+reg array_muxed14;
+reg array_muxed15;
 reg array_muxed16;
 reg array_muxed17;
 reg array_muxed18;
 reg array_muxed19;
-reg array_muxed20;
-reg [2:0] array_muxed21;
-reg [16:0] array_muxed22;
+reg [2:0] array_muxed20;
+reg [16:0] array_muxed21;
+reg array_muxed22;
 reg array_muxed23;
 reg array_muxed24;
 reg array_muxed25;
 reg array_muxed26;
 reg array_muxed27;
+reg array_muxed28;
+reg array_muxed29;
+reg [2:0] array_muxed30;
+reg [16:0] array_muxed31;
+reg array_muxed32;
+reg array_muxed33;
+reg array_muxed34;
+reg array_muxed35;
+reg array_muxed36;
+reg array_muxed37;
+reg array_muxed38;
+reg array_muxed39;
 
 // synthesis translate_off
 reg dummy_s;
@@ -1910,13 +1944,13 @@ always @(*) begin
 			array_muxed5 <= 1'd0;
 		end
 		1'd1: begin
-			array_muxed5 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_read);
+			array_muxed5 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_mw);
 		end
 		2'd2: begin
-			array_muxed5 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_read);
+			array_muxed5 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_mw);
 		end
 		default: begin
-			array_muxed5 <= ((cmd_valid & cmd_ready) & cmd_payload_is_read);
+			array_muxed5 <= ((cmd_valid & cmd_ready) & cmd_payload_is_mw);
 		end
 	endcase
 // synthesis translate_off
@@ -1934,13 +1968,13 @@ always @(*) begin
 			array_muxed6 <= 1'd0;
 		end
 		1'd1: begin
-			array_muxed6 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_write);
+			array_muxed6 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_read);
 		end
 		2'd2: begin
-			array_muxed6 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_write);
+			array_muxed6 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_read);
 		end
 		default: begin
-			array_muxed6 <= ((cmd_valid & cmd_ready) & cmd_payload_is_write);
+			array_muxed6 <= ((cmd_valid & cmd_ready) & cmd_payload_is_read);
 		end
 	endcase
 // synthesis translate_off
@@ -1952,19 +1986,19 @@ end
 reg dummy_d_43;
 // synthesis translate_on
 always @(*) begin
-	array_muxed7 <= 3'd0;
-	case (steerer_sel1)
+	array_muxed7 <= 1'd0;
+	case (steerer_sel0)
 		1'd0: begin
-			array_muxed7 <= nop_ba[2:0];
+			array_muxed7 <= 1'd0;
 		end
 		1'd1: begin
-			array_muxed7 <= choose_req_cmd_payload_ba[2:0];
+			array_muxed7 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_write);
 		end
 		2'd2: begin
-			array_muxed7 <= choose_req_cmd_payload_ba[2:0];
+			array_muxed7 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_write);
 		end
 		default: begin
-			array_muxed7 <= cmd_payload_ba[2:0];
+			array_muxed7 <= ((cmd_valid & cmd_ready) & cmd_payload_is_write);
 		end
 	endcase
 // synthesis translate_off
@@ -1976,19 +2010,19 @@ end
 reg dummy_d_44;
 // synthesis translate_on
 always @(*) begin
-	array_muxed8 <= 17'd0;
-	case (steerer_sel1)
+	array_muxed8 <= 1'd0;
+	case (steerer_sel0)
 		1'd0: begin
-			array_muxed8 <= nop_a;
+			array_muxed8 <= 1'd0;
 		end
 		1'd1: begin
-			array_muxed8 <= choose_req_cmd_payload_a;
+			array_muxed8 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_read);
 		end
 		2'd2: begin
-			array_muxed8 <= choose_req_cmd_payload_a;
+			array_muxed8 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_read);
 		end
 		default: begin
-			array_muxed8 <= cmd_payload_a;
+			array_muxed8 <= ((cmd_valid & cmd_ready) & cmd_payload_is_read);
 		end
 	endcase
 // synthesis translate_off
@@ -2001,18 +2035,18 @@ reg dummy_d_45;
 // synthesis translate_on
 always @(*) begin
 	array_muxed9 <= 1'd0;
-	case (steerer_sel1)
+	case (steerer_sel0)
 		1'd0: begin
 			array_muxed9 <= 1'd0;
 		end
 		1'd1: begin
-			array_muxed9 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_cas);
+			array_muxed9 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_write);
 		end
 		2'd2: begin
-			array_muxed9 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_cas);
+			array_muxed9 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_write);
 		end
 		default: begin
-			array_muxed9 <= ((cmd_valid & cmd_ready) & cmd_payload_cas);
+			array_muxed9 <= ((cmd_valid & cmd_ready) & cmd_payload_is_write);
 		end
 	endcase
 // synthesis translate_off
@@ -2024,19 +2058,19 @@ end
 reg dummy_d_46;
 // synthesis translate_on
 always @(*) begin
-	array_muxed10 <= 1'd0;
+	array_muxed10 <= 3'd0;
 	case (steerer_sel1)
 		1'd0: begin
-			array_muxed10 <= 1'd0;
+			array_muxed10 <= nop_ba[2:0];
 		end
 		1'd1: begin
-			array_muxed10 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_ras);
+			array_muxed10 <= choose_req_cmd_payload_ba[2:0];
 		end
 		2'd2: begin
-			array_muxed10 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_ras);
+			array_muxed10 <= choose_req_cmd_payload_ba[2:0];
 		end
 		default: begin
-			array_muxed10 <= ((cmd_valid & cmd_ready) & cmd_payload_ras);
+			array_muxed10 <= cmd_payload_ba[2:0];
 		end
 	endcase
 // synthesis translate_off
@@ -2048,19 +2082,19 @@ end
 reg dummy_d_47;
 // synthesis translate_on
 always @(*) begin
-	array_muxed11 <= 1'd0;
+	array_muxed11 <= 17'd0;
 	case (steerer_sel1)
 		1'd0: begin
-			array_muxed11 <= 1'd0;
+			array_muxed11 <= nop_a;
 		end
 		1'd1: begin
-			array_muxed11 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_we);
+			array_muxed11 <= choose_req_cmd_payload_a;
 		end
 		2'd2: begin
-			array_muxed11 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_we);
+			array_muxed11 <= choose_req_cmd_payload_a;
 		end
 		default: begin
-			array_muxed11 <= ((cmd_valid & cmd_ready) & cmd_payload_we);
+			array_muxed11 <= cmd_payload_a;
 		end
 	endcase
 // synthesis translate_off
@@ -2078,13 +2112,13 @@ always @(*) begin
 			array_muxed12 <= 1'd0;
 		end
 		1'd1: begin
-			array_muxed12 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_read);
+			array_muxed12 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_cas);
 		end
 		2'd2: begin
-			array_muxed12 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_read);
+			array_muxed12 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_cas);
 		end
 		default: begin
-			array_muxed12 <= ((cmd_valid & cmd_ready) & cmd_payload_is_read);
+			array_muxed12 <= ((cmd_valid & cmd_ready) & cmd_payload_cas);
 		end
 	endcase
 // synthesis translate_off
@@ -2102,13 +2136,13 @@ always @(*) begin
 			array_muxed13 <= 1'd0;
 		end
 		1'd1: begin
-			array_muxed13 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_write);
+			array_muxed13 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_ras);
 		end
 		2'd2: begin
-			array_muxed13 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_write);
+			array_muxed13 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_ras);
 		end
 		default: begin
-			array_muxed13 <= ((cmd_valid & cmd_ready) & cmd_payload_is_write);
+			array_muxed13 <= ((cmd_valid & cmd_ready) & cmd_payload_ras);
 		end
 	endcase
 // synthesis translate_off
@@ -2120,19 +2154,19 @@ end
 reg dummy_d_50;
 // synthesis translate_on
 always @(*) begin
-	array_muxed14 <= 3'd0;
-	case (steerer_sel2)
+	array_muxed14 <= 1'd0;
+	case (steerer_sel1)
 		1'd0: begin
-			array_muxed14 <= nop_ba[2:0];
+			array_muxed14 <= 1'd0;
 		end
 		1'd1: begin
-			array_muxed14 <= choose_req_cmd_payload_ba[2:0];
+			array_muxed14 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_we);
 		end
 		2'd2: begin
-			array_muxed14 <= choose_req_cmd_payload_ba[2:0];
+			array_muxed14 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_we);
 		end
 		default: begin
-			array_muxed14 <= cmd_payload_ba[2:0];
+			array_muxed14 <= ((cmd_valid & cmd_ready) & cmd_payload_we);
 		end
 	endcase
 // synthesis translate_off
@@ -2144,19 +2178,19 @@ end
 reg dummy_d_51;
 // synthesis translate_on
 always @(*) begin
-	array_muxed15 <= 17'd0;
-	case (steerer_sel2)
+	array_muxed15 <= 1'd0;
+	case (steerer_sel1)
 		1'd0: begin
-			array_muxed15 <= nop_a;
+			array_muxed15 <= 1'd0;
 		end
 		1'd1: begin
-			array_muxed15 <= choose_req_cmd_payload_a;
+			array_muxed15 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_mw);
 		end
 		2'd2: begin
-			array_muxed15 <= choose_req_cmd_payload_a;
+			array_muxed15 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_mw);
 		end
 		default: begin
-			array_muxed15 <= cmd_payload_a;
+			array_muxed15 <= ((cmd_valid & cmd_ready) & cmd_payload_is_mw);
 		end
 	endcase
 // synthesis translate_off
@@ -2169,18 +2203,18 @@ reg dummy_d_52;
 // synthesis translate_on
 always @(*) begin
 	array_muxed16 <= 1'd0;
-	case (steerer_sel2)
+	case (steerer_sel1)
 		1'd0: begin
 			array_muxed16 <= 1'd0;
 		end
 		1'd1: begin
-			array_muxed16 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_cas);
+			array_muxed16 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_read);
 		end
 		2'd2: begin
-			array_muxed16 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_cas);
+			array_muxed16 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_read);
 		end
 		default: begin
-			array_muxed16 <= ((cmd_valid & cmd_ready) & cmd_payload_cas);
+			array_muxed16 <= ((cmd_valid & cmd_ready) & cmd_payload_is_read);
 		end
 	endcase
 // synthesis translate_off
@@ -2193,18 +2227,18 @@ reg dummy_d_53;
 // synthesis translate_on
 always @(*) begin
 	array_muxed17 <= 1'd0;
-	case (steerer_sel2)
+	case (steerer_sel1)
 		1'd0: begin
 			array_muxed17 <= 1'd0;
 		end
 		1'd1: begin
-			array_muxed17 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_ras);
+			array_muxed17 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_write);
 		end
 		2'd2: begin
-			array_muxed17 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_ras);
+			array_muxed17 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_write);
 		end
 		default: begin
-			array_muxed17 <= ((cmd_valid & cmd_ready) & cmd_payload_ras);
+			array_muxed17 <= ((cmd_valid & cmd_ready) & cmd_payload_is_write);
 		end
 	endcase
 // synthesis translate_off
@@ -2217,18 +2251,18 @@ reg dummy_d_54;
 // synthesis translate_on
 always @(*) begin
 	array_muxed18 <= 1'd0;
-	case (steerer_sel2)
+	case (steerer_sel1)
 		1'd0: begin
 			array_muxed18 <= 1'd0;
 		end
 		1'd1: begin
-			array_muxed18 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_we);
+			array_muxed18 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_read);
 		end
 		2'd2: begin
-			array_muxed18 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_we);
+			array_muxed18 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_read);
 		end
 		default: begin
-			array_muxed18 <= ((cmd_valid & cmd_ready) & cmd_payload_we);
+			array_muxed18 <= ((cmd_valid & cmd_ready) & cmd_payload_is_read);
 		end
 	endcase
 // synthesis translate_off
@@ -2241,18 +2275,18 @@ reg dummy_d_55;
 // synthesis translate_on
 always @(*) begin
 	array_muxed19 <= 1'd0;
-	case (steerer_sel2)
+	case (steerer_sel1)
 		1'd0: begin
 			array_muxed19 <= 1'd0;
 		end
 		1'd1: begin
-			array_muxed19 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_read);
+			array_muxed19 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_write);
 		end
 		2'd2: begin
-			array_muxed19 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_read);
+			array_muxed19 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_write);
 		end
 		default: begin
-			array_muxed19 <= ((cmd_valid & cmd_ready) & cmd_payload_is_read);
+			array_muxed19 <= ((cmd_valid & cmd_ready) & cmd_payload_is_write);
 		end
 	endcase
 // synthesis translate_off
@@ -2264,19 +2298,19 @@ end
 reg dummy_d_56;
 // synthesis translate_on
 always @(*) begin
-	array_muxed20 <= 1'd0;
+	array_muxed20 <= 3'd0;
 	case (steerer_sel2)
 		1'd0: begin
-			array_muxed20 <= 1'd0;
+			array_muxed20 <= nop_ba[2:0];
 		end
 		1'd1: begin
-			array_muxed20 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_write);
+			array_muxed20 <= choose_req_cmd_payload_ba[2:0];
 		end
 		2'd2: begin
-			array_muxed20 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_write);
+			array_muxed20 <= choose_req_cmd_payload_ba[2:0];
 		end
 		default: begin
-			array_muxed20 <= ((cmd_valid & cmd_ready) & cmd_payload_is_write);
+			array_muxed20 <= cmd_payload_ba[2:0];
 		end
 	endcase
 // synthesis translate_off
@@ -2288,19 +2322,19 @@ end
 reg dummy_d_57;
 // synthesis translate_on
 always @(*) begin
-	array_muxed21 <= 3'd0;
-	case (steerer_sel3)
+	array_muxed21 <= 17'd0;
+	case (steerer_sel2)
 		1'd0: begin
-			array_muxed21 <= nop_ba[2:0];
+			array_muxed21 <= nop_a;
 		end
 		1'd1: begin
-			array_muxed21 <= choose_req_cmd_payload_ba[2:0];
+			array_muxed21 <= choose_req_cmd_payload_a;
 		end
 		2'd2: begin
-			array_muxed21 <= choose_req_cmd_payload_ba[2:0];
+			array_muxed21 <= choose_req_cmd_payload_a;
 		end
 		default: begin
-			array_muxed21 <= cmd_payload_ba[2:0];
+			array_muxed21 <= cmd_payload_a;
 		end
 	endcase
 // synthesis translate_off
@@ -2312,19 +2346,19 @@ end
 reg dummy_d_58;
 // synthesis translate_on
 always @(*) begin
-	array_muxed22 <= 17'd0;
-	case (steerer_sel3)
+	array_muxed22 <= 1'd0;
+	case (steerer_sel2)
 		1'd0: begin
-			array_muxed22 <= nop_a;
+			array_muxed22 <= 1'd0;
 		end
 		1'd1: begin
-			array_muxed22 <= choose_req_cmd_payload_a;
+			array_muxed22 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_cas);
 		end
 		2'd2: begin
-			array_muxed22 <= choose_req_cmd_payload_a;
+			array_muxed22 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_cas);
 		end
 		default: begin
-			array_muxed22 <= cmd_payload_a;
+			array_muxed22 <= ((cmd_valid & cmd_ready) & cmd_payload_cas);
 		end
 	endcase
 // synthesis translate_off
@@ -2337,18 +2371,18 @@ reg dummy_d_59;
 // synthesis translate_on
 always @(*) begin
 	array_muxed23 <= 1'd0;
-	case (steerer_sel3)
+	case (steerer_sel2)
 		1'd0: begin
 			array_muxed23 <= 1'd0;
 		end
 		1'd1: begin
-			array_muxed23 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_cas);
+			array_muxed23 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_ras);
 		end
 		2'd2: begin
-			array_muxed23 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_cas);
+			array_muxed23 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_ras);
 		end
 		default: begin
-			array_muxed23 <= ((cmd_valid & cmd_ready) & cmd_payload_cas);
+			array_muxed23 <= ((cmd_valid & cmd_ready) & cmd_payload_ras);
 		end
 	endcase
 // synthesis translate_off
@@ -2361,18 +2395,18 @@ reg dummy_d_60;
 // synthesis translate_on
 always @(*) begin
 	array_muxed24 <= 1'd0;
-	case (steerer_sel3)
+	case (steerer_sel2)
 		1'd0: begin
 			array_muxed24 <= 1'd0;
 		end
 		1'd1: begin
-			array_muxed24 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_ras);
+			array_muxed24 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_we);
 		end
 		2'd2: begin
-			array_muxed24 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_ras);
+			array_muxed24 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_we);
 		end
 		default: begin
-			array_muxed24 <= ((cmd_valid & cmd_ready) & cmd_payload_ras);
+			array_muxed24 <= ((cmd_valid & cmd_ready) & cmd_payload_we);
 		end
 	endcase
 // synthesis translate_off
@@ -2385,18 +2419,18 @@ reg dummy_d_61;
 // synthesis translate_on
 always @(*) begin
 	array_muxed25 <= 1'd0;
-	case (steerer_sel3)
+	case (steerer_sel2)
 		1'd0: begin
 			array_muxed25 <= 1'd0;
 		end
 		1'd1: begin
-			array_muxed25 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_we);
+			array_muxed25 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_mw);
 		end
 		2'd2: begin
-			array_muxed25 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_we);
+			array_muxed25 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_mw);
 		end
 		default: begin
-			array_muxed25 <= ((cmd_valid & cmd_ready) & cmd_payload_we);
+			array_muxed25 <= ((cmd_valid & cmd_ready) & cmd_payload_is_mw);
 		end
 	endcase
 // synthesis translate_off
@@ -2409,7 +2443,7 @@ reg dummy_d_62;
 // synthesis translate_on
 always @(*) begin
 	array_muxed26 <= 1'd0;
-	case (steerer_sel3)
+	case (steerer_sel2)
 		1'd0: begin
 			array_muxed26 <= 1'd0;
 		end
@@ -2433,7 +2467,7 @@ reg dummy_d_63;
 // synthesis translate_on
 always @(*) begin
 	array_muxed27 <= 1'd0;
-	case (steerer_sel3)
+	case (steerer_sel2)
 		1'd0: begin
 			array_muxed27 <= 1'd0;
 		end
@@ -2449,6 +2483,294 @@ always @(*) begin
 	endcase
 // synthesis translate_off
 	dummy_d_63 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_64;
+// synthesis translate_on
+always @(*) begin
+	array_muxed28 <= 1'd0;
+	case (steerer_sel2)
+		1'd0: begin
+			array_muxed28 <= 1'd0;
+		end
+		1'd1: begin
+			array_muxed28 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_read);
+		end
+		2'd2: begin
+			array_muxed28 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_read);
+		end
+		default: begin
+			array_muxed28 <= ((cmd_valid & cmd_ready) & cmd_payload_is_read);
+		end
+	endcase
+// synthesis translate_off
+	dummy_d_64 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_65;
+// synthesis translate_on
+always @(*) begin
+	array_muxed29 <= 1'd0;
+	case (steerer_sel2)
+		1'd0: begin
+			array_muxed29 <= 1'd0;
+		end
+		1'd1: begin
+			array_muxed29 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_write);
+		end
+		2'd2: begin
+			array_muxed29 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_write);
+		end
+		default: begin
+			array_muxed29 <= ((cmd_valid & cmd_ready) & cmd_payload_is_write);
+		end
+	endcase
+// synthesis translate_off
+	dummy_d_65 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_66;
+// synthesis translate_on
+always @(*) begin
+	array_muxed30 <= 3'd0;
+	case (steerer_sel3)
+		1'd0: begin
+			array_muxed30 <= nop_ba[2:0];
+		end
+		1'd1: begin
+			array_muxed30 <= choose_req_cmd_payload_ba[2:0];
+		end
+		2'd2: begin
+			array_muxed30 <= choose_req_cmd_payload_ba[2:0];
+		end
+		default: begin
+			array_muxed30 <= cmd_payload_ba[2:0];
+		end
+	endcase
+// synthesis translate_off
+	dummy_d_66 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_67;
+// synthesis translate_on
+always @(*) begin
+	array_muxed31 <= 17'd0;
+	case (steerer_sel3)
+		1'd0: begin
+			array_muxed31 <= nop_a;
+		end
+		1'd1: begin
+			array_muxed31 <= choose_req_cmd_payload_a;
+		end
+		2'd2: begin
+			array_muxed31 <= choose_req_cmd_payload_a;
+		end
+		default: begin
+			array_muxed31 <= cmd_payload_a;
+		end
+	endcase
+// synthesis translate_off
+	dummy_d_67 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_68;
+// synthesis translate_on
+always @(*) begin
+	array_muxed32 <= 1'd0;
+	case (steerer_sel3)
+		1'd0: begin
+			array_muxed32 <= 1'd0;
+		end
+		1'd1: begin
+			array_muxed32 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_cas);
+		end
+		2'd2: begin
+			array_muxed32 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_cas);
+		end
+		default: begin
+			array_muxed32 <= ((cmd_valid & cmd_ready) & cmd_payload_cas);
+		end
+	endcase
+// synthesis translate_off
+	dummy_d_68 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_69;
+// synthesis translate_on
+always @(*) begin
+	array_muxed33 <= 1'd0;
+	case (steerer_sel3)
+		1'd0: begin
+			array_muxed33 <= 1'd0;
+		end
+		1'd1: begin
+			array_muxed33 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_ras);
+		end
+		2'd2: begin
+			array_muxed33 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_ras);
+		end
+		default: begin
+			array_muxed33 <= ((cmd_valid & cmd_ready) & cmd_payload_ras);
+		end
+	endcase
+// synthesis translate_off
+	dummy_d_69 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_70;
+// synthesis translate_on
+always @(*) begin
+	array_muxed34 <= 1'd0;
+	case (steerer_sel3)
+		1'd0: begin
+			array_muxed34 <= 1'd0;
+		end
+		1'd1: begin
+			array_muxed34 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_we);
+		end
+		2'd2: begin
+			array_muxed34 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_we);
+		end
+		default: begin
+			array_muxed34 <= ((cmd_valid & cmd_ready) & cmd_payload_we);
+		end
+	endcase
+// synthesis translate_off
+	dummy_d_70 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_71;
+// synthesis translate_on
+always @(*) begin
+	array_muxed35 <= 1'd0;
+	case (steerer_sel3)
+		1'd0: begin
+			array_muxed35 <= 1'd0;
+		end
+		1'd1: begin
+			array_muxed35 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_mw);
+		end
+		2'd2: begin
+			array_muxed35 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_mw);
+		end
+		default: begin
+			array_muxed35 <= ((cmd_valid & cmd_ready) & cmd_payload_is_mw);
+		end
+	endcase
+// synthesis translate_off
+	dummy_d_71 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_72;
+// synthesis translate_on
+always @(*) begin
+	array_muxed36 <= 1'd0;
+	case (steerer_sel3)
+		1'd0: begin
+			array_muxed36 <= 1'd0;
+		end
+		1'd1: begin
+			array_muxed36 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_read);
+		end
+		2'd2: begin
+			array_muxed36 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_read);
+		end
+		default: begin
+			array_muxed36 <= ((cmd_valid & cmd_ready) & cmd_payload_is_read);
+		end
+	endcase
+// synthesis translate_off
+	dummy_d_72 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_73;
+// synthesis translate_on
+always @(*) begin
+	array_muxed37 <= 1'd0;
+	case (steerer_sel3)
+		1'd0: begin
+			array_muxed37 <= 1'd0;
+		end
+		1'd1: begin
+			array_muxed37 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_write);
+		end
+		2'd2: begin
+			array_muxed37 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_write);
+		end
+		default: begin
+			array_muxed37 <= ((cmd_valid & cmd_ready) & cmd_payload_is_write);
+		end
+	endcase
+// synthesis translate_off
+	dummy_d_73 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_74;
+// synthesis translate_on
+always @(*) begin
+	array_muxed38 <= 1'd0;
+	case (steerer_sel3)
+		1'd0: begin
+			array_muxed38 <= 1'd0;
+		end
+		1'd1: begin
+			array_muxed38 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_read);
+		end
+		2'd2: begin
+			array_muxed38 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_read);
+		end
+		default: begin
+			array_muxed38 <= ((cmd_valid & cmd_ready) & cmd_payload_is_read);
+		end
+	endcase
+// synthesis translate_off
+	dummy_d_74 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_75;
+// synthesis translate_on
+always @(*) begin
+	array_muxed39 <= 1'd0;
+	case (steerer_sel3)
+		1'd0: begin
+			array_muxed39 <= 1'd0;
+		end
+		1'd1: begin
+			array_muxed39 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_write);
+		end
+		2'd2: begin
+			array_muxed39 <= ((choose_req_cmd_valid & choose_req_cmd_ready) & choose_req_cmd_payload_is_write);
+		end
+		default: begin
+			array_muxed39 <= ((cmd_valid & cmd_ready) & cmd_payload_is_write);
+		end
+	endcase
+// synthesis translate_off
+	dummy_d_75 <= dummy_s;
 // synthesis translate_on
 end
 
@@ -2945,32 +3267,44 @@ always @(posedge sys_clk) begin
 	dfi_p0_cas_n <= (~array_muxed2);
 	dfi_p0_ras_n <= (~array_muxed3);
 	dfi_p0_we_n <= (~array_muxed4);
-	dfi_p0_rddata_en <= array_muxed5;
-	dfi_p0_wrdata_en <= array_muxed6;
+	dfi_p0_mw <= (~array_muxed5);
+	steerer_rddata_en_dly0 <= array_muxed6;
+	steerer_wrdata_en_dly0 <= array_muxed7;
+	dfi_p0_rddata_en <= (array_muxed8 | steerer_rddata_en_dly0);
+	dfi_p0_wrdata_en <= (array_muxed9 | steerer_wrdata_en_dly0);
 	dfi_p1_cs_n <= 1'd0;
-	dfi_p1_bank <= array_muxed7;
-	dfi_p1_address <= array_muxed8;
-	dfi_p1_cas_n <= (~array_muxed9);
-	dfi_p1_ras_n <= (~array_muxed10);
-	dfi_p1_we_n <= (~array_muxed11);
-	dfi_p1_rddata_en <= array_muxed12;
-	dfi_p1_wrdata_en <= array_muxed13;
+	dfi_p1_bank <= array_muxed10;
+	dfi_p1_address <= array_muxed11;
+	dfi_p1_cas_n <= (~array_muxed12);
+	dfi_p1_ras_n <= (~array_muxed13);
+	dfi_p1_we_n <= (~array_muxed14);
+	dfi_p1_mw <= (~array_muxed15);
+	steerer_rddata_en_dly1 <= array_muxed16;
+	steerer_wrdata_en_dly1 <= array_muxed17;
+	dfi_p1_rddata_en <= (array_muxed18 | steerer_rddata_en_dly1);
+	dfi_p1_wrdata_en <= (array_muxed19 | steerer_wrdata_en_dly1);
 	dfi_p2_cs_n <= 1'd0;
-	dfi_p2_bank <= array_muxed14;
-	dfi_p2_address <= array_muxed15;
-	dfi_p2_cas_n <= (~array_muxed16);
-	dfi_p2_ras_n <= (~array_muxed17);
-	dfi_p2_we_n <= (~array_muxed18);
-	dfi_p2_rddata_en <= array_muxed19;
-	dfi_p2_wrdata_en <= array_muxed20;
+	dfi_p2_bank <= array_muxed20;
+	dfi_p2_address <= array_muxed21;
+	dfi_p2_cas_n <= (~array_muxed22);
+	dfi_p2_ras_n <= (~array_muxed23);
+	dfi_p2_we_n <= (~array_muxed24);
+	dfi_p2_mw <= (~array_muxed25);
+	steerer_rddata_en_dly2 <= array_muxed26;
+	steerer_wrdata_en_dly2 <= array_muxed27;
+	dfi_p2_rddata_en <= (array_muxed28 | steerer_rddata_en_dly2);
+	dfi_p2_wrdata_en <= (array_muxed29 | steerer_wrdata_en_dly2);
 	dfi_p3_cs_n <= 1'd0;
-	dfi_p3_bank <= array_muxed21;
-	dfi_p3_address <= array_muxed22;
-	dfi_p3_cas_n <= (~array_muxed23);
-	dfi_p3_ras_n <= (~array_muxed24);
-	dfi_p3_we_n <= (~array_muxed25);
-	dfi_p3_rddata_en <= array_muxed26;
-	dfi_p3_wrdata_en <= array_muxed27;
+	dfi_p3_bank <= array_muxed30;
+	dfi_p3_address <= array_muxed31;
+	dfi_p3_cas_n <= (~array_muxed32);
+	dfi_p3_ras_n <= (~array_muxed33);
+	dfi_p3_we_n <= (~array_muxed34);
+	dfi_p3_mw <= (~array_muxed35);
+	steerer_rddata_en_dly3 <= array_muxed36;
+	steerer_wrdata_en_dly3 <= array_muxed37;
+	dfi_p3_rddata_en <= (array_muxed38 | steerer_rddata_en_dly3);
+	dfi_p3_wrdata_en <= (array_muxed39 | steerer_wrdata_en_dly3);
 	if (trrdcon_valid) begin
 		trrdcon_count <= (mul_tRRD_cfg - 1'd1);
 		if (((mul_tRRD_cfg - 1'd1) == 1'd0)) begin
@@ -3025,8 +3359,8 @@ always @(posedge sys_clk) begin
 		end
 	end
 	if (trtwcon_valid) begin
-		trtwcon_count <= (mul_RTW_LATENCY_cfg - 1'd1);
-		if (((mul_RTW_LATENCY_cfg - 1'd1) == 1'd0)) begin
+		trtwcon_count <= (mul_RTW_LATENCT_cfg - 1'd1);
+		if (((mul_RTW_LATENCT_cfg - 1'd1) == 1'd0)) begin
 			trtwcon_ready <= 1'd1;
 		end else begin
 			trtwcon_ready <= 1'd0;
@@ -3047,6 +3381,7 @@ always @(posedge sys_clk) begin
 		dfi_p0_cs_n <= 1'd1;
 		dfi_p0_ras_n <= 1'd1;
 		dfi_p0_we_n <= 1'd1;
+		dfi_p0_mw <= 1'd0;
 		dfi_p0_wrdata_en <= 1'd0;
 		dfi_p0_rddata_en <= 1'd0;
 		dfi_p1_address <= 17'd0;
@@ -3055,6 +3390,7 @@ always @(posedge sys_clk) begin
 		dfi_p1_cs_n <= 1'd1;
 		dfi_p1_ras_n <= 1'd1;
 		dfi_p1_we_n <= 1'd1;
+		dfi_p1_mw <= 1'd0;
 		dfi_p1_wrdata_en <= 1'd0;
 		dfi_p1_rddata_en <= 1'd0;
 		dfi_p2_address <= 17'd0;
@@ -3063,6 +3399,7 @@ always @(posedge sys_clk) begin
 		dfi_p2_cs_n <= 1'd1;
 		dfi_p2_ras_n <= 1'd1;
 		dfi_p2_we_n <= 1'd1;
+		dfi_p2_mw <= 1'd0;
 		dfi_p2_wrdata_en <= 1'd0;
 		dfi_p2_rddata_en <= 1'd0;
 		dfi_p3_address <= 17'd0;
@@ -3071,10 +3408,19 @@ always @(posedge sys_clk) begin
 		dfi_p3_cs_n <= 1'd1;
 		dfi_p3_ras_n <= 1'd1;
 		dfi_p3_we_n <= 1'd1;
+		dfi_p3_mw <= 1'd0;
 		dfi_p3_wrdata_en <= 1'd0;
 		dfi_p3_rddata_en <= 1'd0;
 		choose_cmd_grant <= 3'd0;
 		choose_req_grant <= 3'd0;
+		steerer_rddata_en_dly0 <= 1'd0;
+		steerer_wrdata_en_dly0 <= 1'd0;
+		steerer_rddata_en_dly1 <= 1'd0;
+		steerer_wrdata_en_dly1 <= 1'd0;
+		steerer_rddata_en_dly2 <= 1'd0;
+		steerer_wrdata_en_dly2 <= 1'd0;
+		steerer_rddata_en_dly3 <= 1'd0;
+		steerer_wrdata_en_dly3 <= 1'd0;
 		trrdcon_ready <= 1'd0;
 		tfawcon_ready <= 1'd1;
 		tfawcon_window_c <= 64'd0;

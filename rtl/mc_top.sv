@@ -114,9 +114,9 @@ module mc_top(
 
 	//wishbone bus
 	input [31:0] wishbone_port_adr,
-	input [255:0] wishbone_port_dat_w,
-	output reg [255:0] wishbone_port_dat_r,
-	input [31:0] wishbone_port_sel,
+	input [31:0] wishbone_port_dat_w,
+	output reg [31:0] wishbone_port_dat_r,
+	input [3:0] wishbone_port_sel,
 	input wishbone_port_cyc,
 	input wishbone_port_stb,
 	output reg wishbone_port_ack,
@@ -160,7 +160,7 @@ assign dfi_p3_bank[5:3]=3'd0;
 mc_core u_mc_core (
     //dfi p0
 	.dfi_p0_address          (dfi_p0_address),
-    .dfi_p0_bank             (dfi_p0_bank),
+    .dfi_p0_bank             (dfi_p0_bank[2:0]),
     .dfi_p0_cas_n            (dfi_p0_cas_n),
     .dfi_p0_cs_n             (dfi_p0_cs_n),
     .dfi_p0_ras_n            (dfi_p0_ras_n),
@@ -177,7 +177,7 @@ mc_core u_mc_core (
     .dfi_p0_rddata_valid     (dfi_p0_rddata_valid),
     //dfi p1
 	.dfi_p1_address          (dfi_p1_address),
-    .dfi_p1_bank             (dfi_p1_bank),
+    .dfi_p1_bank             (dfi_p1_bank[2:0]),
     .dfi_p1_cas_n            (dfi_p1_cas_n),
     .dfi_p1_cs_n             (dfi_p1_cs_n),
     .dfi_p1_ras_n            (dfi_p1_ras_n),
@@ -194,7 +194,7 @@ mc_core u_mc_core (
     .dfi_p1_rddata_valid     (dfi_p1_rddata_valid),
     //dfi p2
 	.dfi_p2_address          (dfi_p2_address),
-    .dfi_p2_bank             (dfi_p2_bank),
+    .dfi_p2_bank             (dfi_p2_bank[2:0]),
     .dfi_p2_cas_n            (dfi_p2_cas_n),
     .dfi_p2_cs_n             (dfi_p2_cs_n),
     .dfi_p2_ras_n            (dfi_p2_ras_n),
@@ -211,7 +211,7 @@ mc_core u_mc_core (
     .dfi_p2_rddata_valid     (dfi_p2_rddata_valid),
     //dfi p3
 	.dfi_p3_address          (dfi_p3_address),
-    .dfi_p3_bank             (dfi_p3_bank),
+    .dfi_p3_bank             (dfi_p3_bank[2:0]),
     .dfi_p3_cas_n            (dfi_p3_cas_n),
     .dfi_p3_cs_n             (dfi_p3_cs_n),
     .dfi_p3_ras_n            (dfi_p3_ras_n),
@@ -278,17 +278,17 @@ mc_core u_mc_core (
     .axi_r_payload_data      (axi_r_payload_data),
     .axi_r_payload_id        (axi_r_payload_id),
     //wishbone bus
-	.wishbone_adr            (wishbone_port_adr),
-    .wishbone_dat_w          (wishbone_port_dat_w),
-    .wishbone_dat_r          (wishbone_port_dat_r),
-    .wishbone_sel            (wishbone_port_sel),
-    .wishbone_cyc            (wishbone_port_cyc),
-    .wishbone_stb            (wishbone_port_stb),
-    .wishbone_ack            (wishbone_port_ack),
-    .wishbone_we             (wishbone_port_we),
-    .wishbone_cti            (wishbone_port_cti),
-    .wishbone_bte            (wishbone_port_bte),
-    .wishbone_err            (wishbone_port_err),
+	.wishbone_port_adr            (wishbone_port_adr),
+    .wishbone_port_dat_w          (wishbone_port_dat_w),
+    .wishbone_port_dat_r          (wishbone_port_dat_r),
+    .wishbone_port_sel            (wishbone_port_sel),
+    .wishbone_port_cyc            (wishbone_port_cyc),
+    .wishbone_port_stb            (wishbone_port_stb),
+    .wishbone_port_ack            (wishbone_port_ack),
+    .wishbone_port_we             (wishbone_port_we),
+    .wishbone_port_cti            (wishbone_port_cti),
+    .wishbone_port_bte            (wishbone_port_bte),
+    .wishbone_port_err            (wishbone_port_err),
     //ahb bus
 
     .i_ahb_extclk            (i_ahb_extclk),

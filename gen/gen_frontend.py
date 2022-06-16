@@ -26,7 +26,7 @@ def main():
     args=sys.argv[1:]
     if(len(args)==1 and args[0]=='axi'):
         axi_port=LiteDRAMAXIPort(data_width=256, address_width=32, id_width=4, clock_domain="sys")
-        dram_port = LiteDRAMNativePort("both", 32, 256)
+        dram_port = LiteDRAMNativePort("both", 27, 256)
         axi2native=LiteDRAMAXI2Native(
             axi=axi_port,
             port=dram_port,
@@ -39,8 +39,8 @@ def main():
         ios|=set(dram_port.cmd.flatten())|set(dram_port.rdata.flatten())|set(dram_port.wdata.flatten())
         verilog.convert(axi2native,ios,name="axi2native").write("axi2native.v")
     elif(len(args)==1 and args[0]=='wishbone'):
-        wishbone_port=LiteDRAMWishbonePort(data_width=256, adr_width=32, bursting=True)
-        dram_port = LiteDRAMNativePort("both", 32, 256)
+        wishbone_port=LiteDRAMWishbonePort(data_width=32, adr_width=32, bursting=True)
+        dram_port = LiteDRAMNativePort("both", 27, 256)
         wishbone2native=LiteDRAMWishbone2Native(
             wishbone=wishbone_port,
             port=dram_port,

@@ -3,5 +3,13 @@
 *.nfs*
 verif/csrc
 verif/DVEfiels
+verif/simv.daidir
 *.daidir
 simv
+work
+*.mti
+*.mpf
+*.wlf
+*.bak
+*.key
+transcript

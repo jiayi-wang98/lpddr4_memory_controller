@@ -130,9 +130,9 @@ module tb_top;
 
 	//wishbone bus
 	logic [31:0] wishbone_port_adr;
-	logic [255:0] wishbone_port_dat_w;
-	logic [255:0] wishbone_port_dat_r;
-	logic [31:0] wishbone_port_sel;
+	logic [31:0] wishbone_port_dat_w;
+	logic [31:0] wishbone_port_dat_r;
+	logic [3:0] wishbone_port_sel;
 	logic wishbone_port_cyc;
 	logic wishbone_port_stb;
 	logic wishbone_port_ack;
@@ -402,14 +402,14 @@ module tb_top;
 		#10
 		i_ahb_extrst<=1'b0;
 		sys_rst<=1'b0;
-		#20
-		wishbone_port_adr<=32'h40000000;
-		wishbone_port_dat_w<=256'h1;
-		wishbone_port_sel<=32'hffffffff;
+		#4
+		wishbone_port_adr<=32'h40000020;
+		wishbone_port_dat_w<=32'h1;
+		wishbone_port_sel<=4'hf;
 		wishbone_port_we<=1'b1;
 		wishbone_port_stb<=1'b1;
 		wishbone_port_cyc<=1'b1;
-		#4
+		#30
         wishbone_port_adr<='d0;
 		wishbone_port_sel<='d0;
 		wishbone_port_cyc<='d0;

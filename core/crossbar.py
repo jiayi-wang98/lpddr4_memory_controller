@@ -166,6 +166,7 @@ class LiteDRAMCrossbar(Module):
             self.comb += [
                 bank.addr.eq(Array(m_rca)[arbiter.grant]),
                 bank.we.eq(Array(self.masters)[arbiter.grant].cmd.we),
+                bank.mw.eq(Array(self.masters)[arbiter.grant].cmd.mw),
                 bank.valid.eq(Array(bank_requested)[arbiter.grant])
             ]
             master_readys = [master_ready | ((arbiter.grant == nm) & bank_selected[nm] & bank.ready)
@@ -207,23 +208,30 @@ class LiteDRAMCrossbar(Module):
             self.submodules+=master_rdata_valid_dly
             master_rdata_valids[nm]= master_rdata_valid_dly.taps[self.read_latency]
 
+        #add 1:4 ratio characteristics
         for master, master_ready in zip(self.masters, master_readys):
-            self.comb += master.cmd.ready.eq(master_ready)
+            master_ready_dly=Signal()
+            self.sync+= master_ready_dly.eq(master_ready)
+            self.comb += master.cmd.ready.eq(master_ready|master_ready_dly)
         for master, master_wdata_ready in zip(self.masters, master_wdata_readys):
-            self.comb += master.wdata.ready.eq(master_wdata_ready)
+            master_wdata_ready_dly=Signal()
+            self.sync+= master_wdata_ready_dly.eq(master_wdata_ready)
+            self.comb += master.wdata.ready.eq(master_wdata_ready|master_wdata_ready_dly)
         for master, master_rdata_valid in zip(self.masters, master_rdata_valids):
-            self.comb += master.rdata.valid.eq(master_rdata_valid)
+            master_rdata_valid_dly=Signal()
+            self.sync+= master_rdata_valid_dly.eq(master_rdata_valid)
+            self.comb += master.rdata.valid.eq(master_rdata_valid|master_rdata_valid_dly)
 
         # Route data writes ------------------------------------------------------------------------
         wdata_cases = {}
         for nm, master in enumerate(self.masters):
             wdata_cases[2**nm] = [
                 controller.wdata.eq(master.wdata.data),
-                controller.wdata_we.eq(master.wdata.we)
+                controller.wdata_we.eq(master.wdata.we),
             ]
         wdata_cases["default"] = [
             controller.wdata.eq(0),
-            controller.wdata_we.eq(0)
+            controller.wdata_we.eq(0),
         ]
         self.comb += Case(Cat(*master_wdata_readys), wdata_cases)
 

@@ -3,9 +3,9 @@
 module wb2native_tb();
     //wishbone bus
 	logic [31:0] wishbone_port_adr;
-	logic [255:0] wishbone_port_dat_w;
-	logic [255:0] wishbone_port_dat_r;
-	logic [31:0] wishbone_port_sel;
+	logic [31:0] wishbone_port_dat_w;
+	logic [31:0] wishbone_port_dat_r;
+	logic [3:0] wishbone_port_sel;
 	logic wishbone_port_cyc;
 	logic wishbone_port_stb;
 	logic wishbone_port_ack;
@@ -97,8 +97,8 @@ module wb2native_tb();
         native_cmd_ready_1<=1'b1;
         wdata_ready_1<=1'b1;
 		wishbone_port_adr<=32'h40000000;
-		wishbone_port_dat_w<=256'h1;
-		wishbone_port_sel<=32'hffffffff;
+		wishbone_port_dat_w<=32'h1;
+		wishbone_port_sel<=4'hf;
 		wishbone_port_we<=1'b1;
 		wishbone_port_stb<=1'b1;
 		wishbone_port_cyc<=1'b1;

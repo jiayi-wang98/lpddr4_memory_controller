@@ -182,14 +182,21 @@ class _Steerer(Module):
                 phase.address.eq(Array(cmd.a for cmd in commands)[sel]),
                 phase.cas_n.eq(~Array(valid_and(cmd, "cas") for cmd in commands)[sel]),
                 phase.ras_n.eq(~Array(valid_and(cmd, "ras") for cmd in commands)[sel]),
-                phase.we_n.eq(~Array(valid_and(cmd, "we") for cmd in commands)[sel])
+                phase.we_n.eq(~Array(valid_and(cmd, "we") for cmd in commands)[sel]),
+                phase.mw.eq(~Array(valid_and(cmd, "is_mw") for cmd in commands)[sel])
             ]
 
             rddata_ens = Array(valid_and(cmd, "is_read") for cmd in commands)
             wrdata_ens = Array(valid_and(cmd, "is_write") for cmd in commands)
+
+            #add for 1:4 freq ratio, make rd/wrdata_en last for 2 cycles
+            rddata_en_dly=Signal()
+            wrdata_en_dly=Signal()
+            self.sync += rddata_en_dly.eq(rddata_ens[sel])
+            self.sync += wrdata_en_dly.eq(wrdata_ens[sel])
             self.sync += [
-                phase.rddata_en.eq(rddata_ens[sel]),
-                phase.wrdata_en.eq(wrdata_ens[sel])
+                phase.rddata_en.eq(rddata_ens[sel] | rddata_en_dly),
+                phase.wrdata_en.eq(wrdata_ens[sel] | wrdata_en_dly)
             ]
 
 # Multiplexer --------------------------------------------------------------------------------------
@@ -229,7 +236,7 @@ class Multiplexer(Module, AutoCSR):
         self.tFAW=Signal(max=255,reset_less=True,name="mul_tFAW_cfg")
         self.tCCD=Signal(max=255,reset_less=True,name="mul_tCCD_cfg")
         self.WTR_LATENCY=Signal(max=255,reset_less=True,name="mul_WTR_LATENCY_cfg")
-        self.RTW_LATENCY=Signal(max=255,reset_less=True,name="mul_RTW_LATENCY_cfg")
+        self.RTW_LATENCY=Signal(max=255,reset_less=True,name="mul_RTW_LATENCT_cfg")
         self.read_time=Signal(max=255,reset_less=True,name="mul_READ_TIME_cfg")
         self.write_time=Signal(max=255,reset_less=True,name="mul_WRITE_TIME_cfg")
         # Read/Write Cmd/Dat phases ----------------------------------------------------------------

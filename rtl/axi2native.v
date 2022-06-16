@@ -51,7 +51,7 @@ module axi2native(
 	input cmd_first,
 	output reg cmd_last,
 	output reg cmd_payload_we,
-	output reg [31:0] cmd_payload_addr,
+	output reg [26:0] cmd_payload_addr,
 	output wdata_valid,
 	input wdata_ready,
 	output wdata_first,
@@ -666,7 +666,7 @@ always @(*) begin
 	cmd_valid <= 1'd0;
 	cmd_last <= 1'd0;
 	cmd_payload_we <= 1'd0;
-	cmd_payload_addr <= 32'd0;
+	cmd_payload_addr <= 27'd0;
 	rdata_ready <= 1'd0;
 	write_aw_ready <= 1'd0;
 	write_w_buffer_sink_valid <= 1'd0;

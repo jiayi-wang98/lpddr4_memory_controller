@@ -2,708 +2,450 @@
 # This file is part of LiteDRAM.
 #
 # Copyright (c) 2016-2019 Florent Kermarrec <florent@enjoy-digital.fr>
-# Copyright (c) 2016 Tim 'mithro' Ansell <mithro@mithis.com>
-# Copyright (c) 2020 Antmicro <www.antmicro.com>
+# Copyright (c) 2018 John Sully <john@csquare.ca>
+# Copyright (c) 2018 bunnie <bunnie@kosagi.com>
+# Copyright (c) 2020-2021 Antmicro <www.antmicro.com>
 # SPDX-License-Identifier: BSD-2-Clause
 
-import os
-import random
-import itertools
-from functools import partial
-from operator import or_
+import math
+from functools import reduce
+from operator import add
+from collections import OrderedDict
+from typing import Union, Optional
 
 from migen import *
 
+from litex.soc.interconnect import stream
 
-def seed_to_data(seed, random=True, nbits=32):
-    if nbits == 32:
-        if random:
-            return (seed * 0x31415979 + 1) & 0xffffffff
-        else:
-            return seed
+# Helpers ------------------------------------------------------------------------------------------
+
+burst_lengths = {
+    "SDR":    1,
+    "DDR":    4,
+    "LPDDR":  4,
+    "DDR2":   4,
+    "DDR3":   8,
+    "RPC":    16,
+    "DDR4":   8,
+    "LPDDR4": 16,
+    "LPDDR5": 16,
+}
+
+def get_default_cl_cwl(memtype, tck):
+    f_to_cl_cwl = OrderedDict()
+    if memtype == "SDR":
+        f_to_cl_cwl[100e6] = (2, None)
+        f_to_cl_cwl[133e6] = (3, None)
+    elif memtype == "DDR2":
+        f_to_cl_cwl[400e6]  = (3, 2)
+        f_to_cl_cwl[533e6]  = (4, 3)
+        f_to_cl_cwl[677e6]  = (5, 4)
+        f_to_cl_cwl[800e6]  = (6, 5)
+        f_to_cl_cwl[1066e6] = (7, 5)
+    elif memtype == "DDR3":
+        f_to_cl_cwl[800e6]  = ( 6, 5)
+        f_to_cl_cwl[1066e6] = ( 7, 6)
+        f_to_cl_cwl[1333e6] = (10, 7)
+        f_to_cl_cwl[1600e6] = (11, 8)
+        f_to_cl_cwl[1866e6] = (13, 9)
+    elif memtype == "DDR4":
+        f_to_cl_cwl[1333e6] = (9,   9)
+        f_to_cl_cwl[1600e6] = (11,  9)
+        f_to_cl_cwl[1866e6] = (13, 10)
+        f_to_cl_cwl[2133e6] = (15, 11)
+        f_to_cl_cwl[2400e6] = (16, 12)
+        f_to_cl_cwl[2666e6] = (18, 14)
     else:
-        assert nbits%32 == 0
-        data = 0
-        for i in range(nbits//32):
-            data = data << 32
-            data |= seed_to_data(seed*nbits//32 + i, random, 32)
-        return data
+        raise ValueError
+    for f, (cl, cwl) in f_to_cl_cwl.items():
+        m = 2 if "DDR" in memtype else 1
+        if tck >= m/f:
+            return cl, cwl
+    raise ValueError
 
+def get_default_cl(memtype, tck):
+    cl, _ = get_default_cl_cwl(memtype, tck)
+    return cl
 
-@passive
-def timeout_generator(ticks):
-    # raise exception after given timeout effectively stopping simulation
-    # because of @passive, simulation can end even if this generator is still running
-    for _ in range(ticks):
-        yield
-    raise TimeoutError("Timeout after %d ticks" % ticks)
+def get_default_cwl(memtype, tck):
+    _, cwl = get_default_cl_cwl(memtype, tck)
+    return cwl
 
+def get_sys_latency(nphases, cas_latency):
+    return math.ceil(cas_latency/nphases)
 
-class NativePortDriver:
-    """Generates sequences for reading/writing to LiteDRAMNativePort
+def get_sys_phase(nphases, sys_latency, cas_latency):
+    return sys_latency*nphases - cas_latency
 
-    The write/read versions with wait_data=False are a cheap way to perform
-    burst during which the port is being held locked, but this way all the
-    data is being lost (would require separate coroutine to handle data).
+# PHY Pads Transformers ----------------------------------------------------------------------------
+
+class PHYPadsReducer:
+    """PHY Pads Reducer
+
+    Reduce DRAM pads to only use specific modules.
+
+    For testing purposes, we often need to use only some of the DRAM modules. PHYPadsReducer allows
+    selecting specific modules and avoid re-definining dram pins in the Platform for this.
     """
-    def __init__(self, port):
-        self.port = port
-        self.wdata = []  # fifo, consumed by handler
-        self.rdata = []  # stack, never consumed
-        self.rdata_expected = 0
+    def __init__(self, pads, modules, with_cat=False):
+        self.pads     = pads
+        self.modules  = modules
+        self.with_cat = with_cat
 
-    def generators(self):
-        return [self.write_data_handler(), self.read_data_handler()]
-
-    def wait_all(self):
-        while self.wdata or len(self.rdata) < self.rdata_expected:
-            yield
-
-    @passive
-    def write_data_handler(self):
-        while True:
-            if self.wdata:
-                # pop the data only after write has been completed
-                data, we = self.wdata[0]
-                yield self.port.wdata.valid.eq(1)
-                yield self.port.wdata.data.eq(data)
-                yield self.port.wdata.we.eq(we)
-                yield
-                while (yield self.port.wdata.ready) == 0:
-                    yield
-                yield self.port.wdata.valid.eq(0)
-                self.wdata.pop(0)
-            yield
-
-    @passive
-    def read_data_handler(self, latency=0):
-        if latency == 0:
-            yield self.port.rdata.ready.eq(1)
-            while True:
-                while (yield self.port.rdata.valid) == 0:
-                    yield
-                data = (yield self.port.rdata.data)
-                yield
-                self.rdata.append(data)
+    def __getattr__(self, name):
+        if name in ["dq"]:
+            r = Array([getattr(self.pads, name)[8*i + j]
+                for i in self.modules
+                for j in range(8)])
+            return r if not self.with_cat else Cat(r)
+        if name in ["dm", "dqs", "dqs_p", "dqs_n"]:
+            r = Array([getattr(self.pads, name)[i] for i in self.modules])
+            return r if not self.with_cat else Cat(r)
         else:
-            while True:
-                while (yield self.port.rdata.valid) == 0:
-                    yield
-                data = (yield self.port.rdata.data)
-                yield self.port.rdata.ready.eq(1)
-                yield
-                self.rdata.append(data)
-                yield self.port.rdata.ready.eq(0)
-                for _ in range(latency):
-                    yield
+            return getattr(self.pads, name)
 
-    def read(self, address, first=0, last=0, wait_data=True):
-        yield self.port.cmd.valid.eq(1)
-        yield self.port.cmd.first.eq(first)
-        yield self.port.cmd.last.eq(last)
-        yield self.port.cmd.we.eq(0)
-        yield self.port.cmd.addr.eq(address)
-        yield
-        while (yield self.port.cmd.ready) == 0:
-            yield
-        self.rdata_expected += 1
-        yield self.port.cmd.valid.eq(0)
-        if wait_data:
-            while len(self.rdata) != self.rdata_expected:
-                yield
-            return self.rdata[-1]
+class PHYPadsCombiner:
+    """PHY Pads Combiner
 
-    def write(self, address, data, we=None, first=0, last=0, wait_data=True, data_with_cmd=False):
-        if we is None:
-            we = 2**self.port.wdata.we.nbits - 1
-        yield self.port.cmd.valid.eq(1)
-        yield self.port.cmd.first.eq(first)
-        yield self.port.cmd.last.eq(last)
-        yield self.port.cmd.we.eq(1)
-        yield self.port.cmd.addr.eq(address)
-        if data_with_cmd:
-            self.wdata.append((data, we))
-        yield
-        while (yield self.port.cmd.ready) == 0:
-            yield
-        if not data_with_cmd:
-            self.wdata.append((data, we))
-        yield self.port.cmd.valid.eq(0)
-        if wait_data:
-            n_wdata = len(self.wdata)
-            while len(self.wdata) != n_wdata - 1:
-                yield
+    Combine DRAM pads from fully dissociated chips in a unique DRAM pads structure.
 
+    Most generally, DRAM chips are sharing command/address lines between chips (using a fly-by
+    topology since DDR3). On some boards, the DRAM chips are using separate command/address lines
+    and this combiner can be used to re-create a single pads structure (that will be compatible with
+    LiteDRAM's PHYs) to create a single DRAM controller from multiple fully dissociated DRAMs chips.
+    """
+    def __init__(self, pads):
+        if not isinstance(pads, list):
+            self.groups = [pads]
+        else:
+            self.groups = pads
+        self.sel = 0
 
-class CmdRequestRWDriver:
-    """Simple driver for Endpoint(cmd_request_rw_layout())"""
-    def __init__(self, req, i=0, ep_layout=True, rw_layout=True):
-        self.req = req
-        self.rw_layout = rw_layout  # if False, omit is_* signals
-        self.ep_layout = ep_layout  # if False, omit endpoint signals (valid, etc.)
+    def sel_group(self, n):
+        self.sel = n
 
-        # used to distinguish commands
-        self.i = self.bank = self.row = self.col = i
+    def __getattr__(self, name):
+        if name in ["dm", "dq", "dqs", "dqs_p", "dqs_n"]:
+            return Array([getattr(self.groups[j], name)[i]
+                for i in range(len(getattr(self.groups[0], name)))
+                for j in range(len(self.groups))])
+        else:
+            return getattr(self.groups[self.sel], name)
 
-    def request(self, char):
-        # convert character to matching command invocation
-        return {
-            "w": self.write,
-            "r": self.read,
-            "W": partial(self.write, auto_precharge=True),
-            "R": partial(self.read, auto_precharge=True),
-            "a": self.activate,
-            "p": self.precharge,
-            "f": self.refresh,
-            "_": self.nop,
-        }[char]()
+# BitSlip ------------------------------------------------------------------------------------------
 
-    def activate(self):
-        yield from self._drive(valid=1, is_cmd=1, ras=1, a=self.row, ba=self.bank)
+class BitSlip(Module):
+    def __init__(self, dw, i=None, o=None, rst=None, slp=None, cycles=1):
+        self.i   = Signal(dw) if i is None else i
+        self.o   = Signal(dw) if o is None else o
+        self.rst = Signal()   if rst is None else rst
+        self.slp = Signal()   if slp is None else slp
+        assert cycles >= 1
 
-    def precharge(self, all_banks=False):
-        a = 0 if not all_banks else (1 << 10)
-        yield from self._drive(valid=1, is_cmd=1, ras=1, we=1, a=a, ba=self.bank)
+        # # #
 
-    def refresh(self):
-        yield from self._drive(valid=1, is_cmd=1, cas=1, ras=1, ba=self.bank)
+        value = Signal(max=cycles*dw, reset=cycles*dw-1)
+        self.sync += If(self.slp, value.eq(value + 1))
+        self.sync += If(self.rst, value.eq(value.reset))
 
-    def write(self, auto_precharge=False):
-        assert not (self.col & (1 << 10))
-        col = self.col | (1 << 10) if auto_precharge else self.col
-        yield from self._drive(valid=1, is_write=1, cas=1, we=1, a=col, ba=self.bank)
+        r = Signal((cycles+1)*dw, reset_less=True)
+        self.sync += r.eq(Cat(r[dw:], self.i))
+        cases = {}
+        for i in range(cycles*dw):
+            cases[i] = self.o.eq(r[i+1:dw+i+1])
+        self.comb += Case(value, cases)
 
-    def read(self, auto_precharge=False):
-        assert not (self.col & (1 << 10))
-        col = self.col | (1 << 10) if auto_precharge else self.col
-        yield from self._drive(valid=1, is_read=1, cas=1, a=col, ba=self.bank)
+# TappedDelayLine ----------------------------------------------------------------------------------
 
-    def nop(self):
-        yield from self._drive()
+class TappedDelayLine(Module):
+    def __init__(self, signal=None, ntaps=1):
+        self.input = Signal() if signal is None else signal
+        self.taps  = Array(Signal.like(self.input) for i in range(ntaps))
+        for i in range(ntaps):
+            self.sync += self.taps[i].eq(self.input if i == 0 else self.taps[i-1])
+        self.output = self.taps[-1]
 
-    def _drive(self, **kwargs):
-        signals = ["a", "ba", "cas", "ras", "we"]
-        if self.rw_layout:
-            signals += ["is_cmd", "is_read", "is_write"]
-        if self.ep_layout:
-            signals += ["valid", "first", "last"]
-        for s in signals:
-            yield getattr(self.req, s).eq(kwargs.get(s, 0))
-        # drive ba even for nop, to be able to distinguish bank machines anyway
-        if "ba" not in kwargs:
-            yield self.req.ba.eq(self.bank)
+# DQS Pattern --------------------------------------------------------------------------------------
 
+class DQSPattern(Module):
+    def __init__(self, preamble=None, postamble=None, wlevel_en=0, wlevel_strobe=0, register=False):
+        self.preamble  = Signal() if preamble  is None else preamble
+        self.postamble = Signal() if postamble is None else postamble
+        self.o = Signal(8)
 
-class DRAMMemory:
-    def __init__(self, width, depth, init=[]):
-        self.width = width
-        self.depth = depth
-        self.mem = []
-        for d in init:
-            self.mem.append(d)
-        for _ in range(depth-len(init)):
-            self.mem.append(0)
+        # # #
 
-        # "W" enables write msgs, "R" - read msgs and "1" both
-        self._debug = os.environ.get("DRAM_MEM_DEBUG", "0")
+        # DQS Pattern transmitted as LSB-first.
 
-    def show_content(self):
-        for addr in range(self.depth):
-            print("0x{:08x}: 0x{:0{dwidth}x}".format(addr, self.mem[addr], dwidth=self.width//4))
-
-    def _warn(self, address):
-        if address > self.depth * self.width:
-            print("! adr > 0x{:08x}".format(
-                self.depth * self.width))
-
-    def _write(self, address, data, we):
-        mask = reduce(or_, [0xff << (8 * bit) for bit in range(self.width//8)
-                            if (we & (1 << bit)) != 0], 0)
-        data = data & mask
-        self.mem[address%self.depth] = data | (self.mem[address%self.depth] & ~mask)
-        if self._debug in ["1", "W"]:
-            print("W 0x{:08x}: 0x{:0{dwidth}x}".format(address, self.mem[address%self.depth],
-                                                       dwidth=self.width//4))
-            self._warn(address)
-
-    def _read(self, address):
-        if self._debug in ["1", "R"]:
-            print("R 0x{:08x}: 0x{:0{dwidth}x}".format(address, self.mem[address%self.depth],
-                                                       dwidth=self.width//4))
-            self._warn(address)
-        return self.mem[address%self.depth]
-
-    @passive
-    def read_handler(self, dram_port, rdata_valid_random=0):
-        address = 0
-        pending = 0
-        prng = random.Random(42)
-        yield dram_port.cmd.ready.eq(0)
-        while True:
-            yield dram_port.rdata.valid.eq(0)
-            if pending:
-                while prng.randrange(100) < rdata_valid_random:
-                    yield
-                yield dram_port.rdata.valid.eq(1)
-                yield dram_port.rdata.data.eq(self._read(address))
-                yield
-                yield dram_port.rdata.valid.eq(0)
-                yield dram_port.rdata.data.eq(0)
-                pending = 0
-            elif (yield dram_port.cmd.valid):
-                pending = not (yield dram_port.cmd.we)
-                address = (yield dram_port.cmd.addr)
-                if pending:
-                    yield dram_port.cmd.ready.eq(1)
-                    yield
-                    yield dram_port.cmd.ready.eq(0)
-            yield
-
-    @passive
-    def write_handler(self, dram_port, wdata_ready_random=0):
-        address = 0
-        pending = 0
-        prng = random.Random(42)
-        yield dram_port.cmd.ready.eq(0)
-        while True:
-            yield dram_port.wdata.ready.eq(0)
-            if pending:
-                while (yield dram_port.wdata.valid) == 0:
-                    yield
-                while prng.randrange(100) < wdata_ready_random:
-                    yield
-                yield dram_port.wdata.ready.eq(1)
-                yield
-                self._write(address, (yield dram_port.wdata.data), (yield dram_port.wdata.we))
-                yield dram_port.wdata.ready.eq(0)
-                yield
-                pending = 0
-                yield
-            elif (yield dram_port.cmd.valid):
-                pending = (yield dram_port.cmd.we)
-                address = (yield dram_port.cmd.addr)
-                if pending:
-                    yield dram_port.cmd.ready.eq(1)
-                    yield
-                    yield dram_port.cmd.ready.eq(0)
-            yield
-
-
-class MemoryTestDataMixin:
-    @property
-    def bist_test_data(self):
-        data = {
-            "8bit": dict(
-                base     = 2,
-                end      = 2 + 8,  # (end - base) must be pow of 2
-                length   = 5,
-                #                       2     3     4     5     6     7=2+5
-                expected = [0x00, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x00],
+        self.comb += [
+            self.o.eq(0b01010101),
+            If(self.preamble,
+                self.o.eq(0b00010101)
             ),
-            "32bit": dict(
-                base     = 0x04,
-                end      = 0x04 + 8,
-                length   = 5 * 4,
-                expected = [
-                    0x00000000,  # 0x00
-                    0x00000000,  # 0x04
-                    0x00000001,  # 0x08
-                    0x00000002,  # 0x0c
-                    0x00000003,  # 0x10
-                    0x00000004,  # 0x14
-                    0x00000000,  # 0x18
-                    0x00000000,  # 0x1c
-                ],
+            If(self.postamble,
+                self.o.eq(0b01010100)
             ),
-            "64bit": dict(
-                base     = 0x10,
-                end      = 0x10 + 8,
-                length   = 5 * 8,
-                expected = [
-                    0x0000000000000000,  # 0x00
-                    0x0000000000000000,  # 0x08
-                    0x0000000000000000,  # 0x10
-                    0x0000000000000001,  # 0x18
-                    0x0000000000000002,  # 0x20
-                    0x0000000000000003,  # 0x28
-                    0x0000000000000004,  # 0x30
-                    0x0000000000000000,  # 0x38
-                ],
-            ),
-            "32bit_masked": dict(
-                base     = 0x04,
-                end      = 0x04 + 0x04,  # TODO: fix address masking to be consistent
-                length   = 6 * 4,
-                expected = [  # due to masking
-                    0x00000000,  # 0x00
-                    0x00000004,  # 0x04
-                    0x00000005,  # 0x08
-                    0x00000002,  # 0x0c
-                    0x00000003,  # 0x10
-                    0x00000000,  # 0x14
-                    0x00000000,  # 0x18
-                    0x00000000,  # 0x1c
-                ],
-            ),
-        }
-        data["32bit_long_sequential"] = dict(
-            base     = 16,
-            end      = 16 + 128,
-            length   = 64,
-            expected = [0x00000000] * 128
-        )
-        expected = data["32bit_long_sequential"]["expected"]
-        expected[16//4:(16 + 64)//4] = list(range(64//4))
-        return data
+            If(wlevel_en,
+                self.o.eq(0b00000000),
+                If(wlevel_strobe,
+                    self.o.eq(0b00000001)
+                )
+            )
+        ]
+        if register:
+            o = Signal.like(self.o)
+            self.sync += o.eq(self.o)
+            self.o = o
 
-    @property
-    def pattern_test_data(self):
-        data = {
-            "8bit": dict(
-                pattern=[
-                    # address, data
-                    (0x00, 0xaa),
-                    (0x05, 0xbb),
-                    (0x02, 0xcc),
-                    (0x07, 0xdd),
-                ],
-                expected=[
-                    # data, address
-                    0xaa,  # 0x00
-                    0x00,  # 0x01
-                    0xcc,  # 0x02
-                    0x00,  # 0x03
-                    0x00,  # 0x04
-                    0xbb,  # 0x05
-                    0x00,  # 0x06
-                    0xdd,  # 0x07
-                ],
-            ),
-            "32bit": dict(
-                pattern=[
-                    # address, data
-                    (0x00, 0xabadcafe),
-                    (0x07, 0xbaadf00d),
-                    (0x02, 0xcafefeed),
-                    (0x01, 0xdeadc0de),
-                ],
-                expected=[
-                    # data, address
-                    0xabadcafe,  # 0x00
-                    0xdeadc0de,  # 0x04
-                    0xcafefeed,  # 0x08
-                    0x00000000,  # 0x0c
-                    0x00000000,  # 0x10
-                    0x00000000,  # 0x14
-                    0x00000000,  # 0x18
-                    0xbaadf00d,  # 0x1c
-                ],
-            ),
-            "64bit": dict(
-                pattern=[
-                    # address, data
-                    (0x00, 0x0ddf00dbadc0ffee),
-                    (0x05, 0xabadcafebaadf00d),
-                    (0x02, 0xcafefeedfeedface),
-                    (0x07, 0xdeadc0debaadbeef),
-                ],
-                expected=[
-                    # data, address
-                    0x0ddf00dbadc0ffee,  # 0x00
-                    0x0000000000000000,  # 0x08
-                    0xcafefeedfeedface,  # 0x10
-                    0x0000000000000000,  # 0x18
-                    0x0000000000000000,  # 0x20
-                    0xabadcafebaadf00d,  # 0x28
-                    0x0000000000000000,  # 0x30
-                    0xdeadc0debaadbeef,  # 0x38
-                ],
-            ),
-            "64bit_to_32bit": dict(
-                pattern=[
-                    # address, data
-                    (0x00, 0x0d15ea5e00facade),
-                    (0x05, 0xabadcafe8badf00d),
-                    (0x01, 0xcafefeedbaadf00d),
-                    (0x02, 0xfee1deaddeadc0de),
-                ],
-                expected=[
-                    # data, word, address
-                    0x00facade,  #  0 0x00
-                    0x0d15ea5e,  #  1 0x04
-                    0xbaadf00d,  #  2 0x08
-                    0xcafefeed,  #  3 0x0c
-                    0xdeadc0de,  #  4 0x10
-                    0xfee1dead,  #  5 0x14
-                    0x00000000,  #  6 0x18
-                    0x00000000,  #  7 0x1c
-                    0x00000000,  #  8 0x20
-                    0x00000000,  #  9 0x24
-                    0x8badf00d,  # 10 0x28
-                    0xabadcafe,  # 11 0x2c
-                    0x00000000,  # 12 0x30
-                ]
-            ),
-            "32bit_to_8bit": dict(
-                pattern=[
-                    # address, data
-                    (0x00, 0x00112233),
-                    (0x05, 0x44556677),
-                    (0x01, 0x8899aabb),
-                    (0x02, 0xccddeeff),
-                ],
-                expected=[
-                    # data, address
-                    0x33,  # 0x00
-                    0x22,  # 0x01
-                    0x11,  # 0x02
-                    0x00,  # 0x03
-                    0xbb,  # 0x04
-                    0xaa,  # 0x05
-                    0x99,  # 0x06
-                    0x88,  # 0x07
-                    0xff,  # 0x08
-                    0xee,  # 0x09
-                    0xdd,  # 0x0a
-                    0xcc,  # 0x0b
-                    0x00,  # 0x0c
-                    0x00,  # 0x0d
-                    0x00,  # 0x0e
-                    0x00,  # 0x0f
-                    0x00,  # 0x10
-                    0x00,  # 0x11
-                    0x00,  # 0x12
-                    0x00,  # 0x13
-                    0x77,  # 0x14
-                    0x66,  # 0x15
-                    0x55,  # 0x16
-                    0x44,  # 0x17
-                    0x00,  # 0x18
-                    0x00,  # 0x19
-                ]
-            ),
-            "8bit_to_32bit": dict(
-                pattern=[
-                    # address, data
-                    (0x00, 0x00),
-                    (0x01, 0x11),
-                    (0x02, 0x22),
-                    (0x03, 0x33),
-                    (0x10, 0x44),
-                    (0x11, 0x55),
-                    (0x12, 0x66),
-                    (0x13, 0x77),
-                    (0x08, 0x88),
-                    (0x09, 0x99),
-                    (0x0a, 0xaa),
-                    (0x0b, 0xbb),
-                    (0x0c, 0xcc),
-                    (0x0d, 0xdd),
-                    (0x0e, 0xee),
-                    (0x0f, 0xff),
-                ],
-                expected=[
-                    # data, address
-                    0x33221100,  # 0x00
-                    0x00000000,  # 0x04
-                    0xbbaa9988,  # 0x08
-                    0xffeeddcc,  # 0x0c
-                    0x77665544,  # 0x10
-                    0x00000000,  # 0x14
-                    0x00000000,  # 0x18
-                    0x00000000,  # 0x1c
-                ]
-            ),
-            "8bit_to_32bit_not_aligned": dict(
-                pattern=[
-                    # address, data
-                    (0x00, 0x00),
-                    (0x05, 0x11),
-                    (0x0a, 0x22),
-                    (0x0f, 0x33),
-                    (0x1e, 0x44),
-                    (0x15, 0x55),
-                    (0x13, 0x66),
-                    (0x18, 0x77),
-                ],
-                expected=[
-                    # data, address
-                    0x00000000,  # 0x00
-                    0x00001100,  # 0x04
-                    0x00220000,  # 0x08
-                    0x33000000,  # 0x0c
-                    0x66000000,  # 0x10
-                    0x00005500,  # 0x14
-                    0x00000077,  # 0x18
-                    0x00440000,  # 0x1c
-                ]
-            ),
-            "32bit_to_256bit":  dict(
-                pattern=[
-                    # address, data
-                    (0x00, 0x00000000),
-                    (0x01, 0x11111111),
-                    (0x02, 0x22222222),
-                    (0x03, 0x33333333),
-                    (0x04, 0x44444444),
-                    (0x05, 0x55555555),
-                    (0x06, 0x66666666),
-                    (0x07, 0x77777777),
-                    (0x10, 0x88888888),
-                    (0x11, 0x99999999),
-                    (0x12, 0xaaaaaaaa),
-                    (0x13, 0xbbbbbbbb),
-                    (0x14, 0xcccccccc),
-                    (0x15, 0xdddddddd),
-                    (0x16, 0xeeeeeeee),
-                    (0x17, 0xffffffff),
-                ],
-                expected=[
-                    # data, address
-                    0x7777777766666666555555554444444433333333222222221111111100000000,  # 0x00
-                    0x0000000000000000000000000000000000000000000000000000000000000000,  # 0x20
-                    0xffffffffeeeeeeeeddddddddccccccccbbbbbbbbaaaaaaaa9999999988888888,  # 0x40
-                    0x0000000000000000000000000000000000000000000000000000000000000000,  # 0x60
-                ]
-            ),
-            "8bit_to_256bit":  dict(
-                #       address, data
-                pattern=[(i, 0x10 + i) for i in range(128)],
-                expected=[
-                    # data, address
-                    0x2f2e2d2c2b2a292827262524232221201f1e1d1c1b1a19181716151413121110,  # 0x00
-                    0x4f4e4d4c4b4a494847464544434241403f3e3d3c3b3a39383736353433323130,  # 0x20
-                    0x6f6e6d6c6b6a696867666564636261605f5e5d5c5b5a59585756555453525150,  # 0x40
-                    0x8f8e8d8c8b8a898887868584838281807f7e7d7c7b7a79787776757473727170,  # 0x60
-                ]
-            ),
-            "32bit_to_256bit_not_aligned":  dict(
-                pattern=[
-                    # address, data
-                    (0x00, 0x00000000),
-                    (0x01, 0x11111111),
-                    (0x02, 0x22222222),
-                    (0x03, 0x33333333),
-                    (0x04, 0x44444444),
-                    (0x05, 0x55555555),
-                    (0x06, 0x66666666),
-                    (0x07, 0x77777777),
-                    (0x14, 0x88888888),
-                    (0x15, 0x99999999),
-                    (0x16, 0xaaaaaaaa),
-                    (0x17, 0xbbbbbbbb),
-                    (0x18, 0xcccccccc),
-                    (0x19, 0xdddddddd),
-                    (0x1a, 0xeeeeeeee),
-                    (0x1b, 0xffffffff),
-                ],
-                expected=[
-                    # data, address
-                    0x7777777766666666555555554444444433333333222222221111111100000000,  # 0x00
-                    0x0000000000000000000000000000000000000000000000000000000000000000,  # 0x20
-                    0xbbbbbbbbaaaaaaaa999999998888888800000000000000000000000000000000,  # 0x40
-                    0x00000000000000000000000000000000ffffffffeeeeeeeeddddddddcccccccc,  # 0x60
-                ]
-            ),
-            "32bit_not_aligned": dict(
-                pattern=[
-                    # address, data
-                    (0x00, 0xabadcafe),
-                    (0x07, 0xbaadf00d),
-                    (0x02, 0xcafefeed),
-                    (0x01, 0xdeadc0de),
-                ],
-                expected=[
-                    # data, address
-                    0xabadcafe,  # 0x00
-                    0xdeadc0de,  # 0x04
-                    0xcafefeed,  # 0x08
-                    0x00000000,  # 0x0c
-                    0x00000000,  # 0x10
-                    0x00000000,  # 0x14
-                    0x00000000,  # 0x18
-                    0xbaadf00d,  # 0x1c
-                ],
-            ),
-            "32bit_duplicates": dict(
-                pattern=[
-                    # address, data
-                    (0x00, 0xabadcafe),
-                    (0x07, 0xbaadf00d),
-                    (0x00, 0xcafefeed),
-                    (0x07, 0xdeadc0de),
-                ],
-                expected=[
-                    # data, address
-                    0xcafefeed,  # 0x00
-                    0x00000000,  # 0x04
-                    0x00000000,  # 0x08
-                    0x00000000,  # 0x0c
-                    0x00000000,  # 0x10
-                    0x00000000,  # 0x14
-                    0x00000000,  # 0x18
-                    0xdeadc0de,  # 0x1c
-                ],
-            ),
-            "32bit_sequential": dict(
-                pattern=[
-                    # address, data
-                    (0x02, 0xabadcafe),
-                    (0x03, 0xbaadf00d),
-                    (0x04, 0xcafefeed),
-                    (0x05, 0xdeadc0de),
-                ],
-                expected=[
-                    # data, address
-                    0x00000000,  # 0x00
-                    0x00000000,  # 0x04
-                    0xabadcafe,  # 0x08
-                    0xbaadf00d,  # 0x0c
-                    0xcafefeed,  # 0x10
-                    0xdeadc0de,  # 0x14
-                    0x00000000,  # 0x18
-                    0x00000000,  # 0x1c
-                ],
-            ),
-            "32bit_long_sequential": dict(pattern=[], expected=[0] * 64),
-        }
+# Settings -----------------------------------------------------------------------------------------
 
-        # 32bit_long_sequential
-        for i in range(32):
-            data["32bit_long_sequential"]["pattern"].append((i, 64 + i))
-            data["32bit_long_sequential"]["expected"][i] = 64 + i
+class Settings:
+    def set_attributes(self, attributes):
+        for k, v in attributes.items():
+            setattr(self, k, v)
 
-        def half_width(data, from_width):
-            half_mask = 2**(from_width//2) - 1
-            chunks = [(val & half_mask, (val >> from_width//2) & half_mask) for val in data]
-            return list(itertools.chain.from_iterable(chunks))
 
-        # down conversion
-        data["64bit_to_16bit"] = dict(
-            pattern  = data["64bit_to_32bit"]["pattern"].copy(),
-            expected = half_width(data["64bit_to_32bit"]["expected"], from_width=32),
-        )
-        data["64bit_to_8bit"] = dict(
-            pattern  = data["64bit_to_16bit"]["pattern"].copy(),
-            expected = half_width(data["64bit_to_16bit"]["expected"], from_width=16),
-        )
+class PhySettings(Settings):
+    def __init__(self,
+            phytype: str,
+            memtype: str,  # SDR, DDR, DDR2, ...
+            databits: int,  # number of DQ lines
+            dfi_databits: int,  # per-phase DFI data width
+            nphases: int,  # number of DFI phases
+            rdphase: Union[int, Signal],  # phase on which READ command will be issued by MC
+            wrphase: Union[int, Signal],  # phase on which WRITE command will be issued by MC
+            cl: int,  # latency (DRAM clk) from READ command to first data
+            read_latency: int,  # latency (MC clk) from DFI.rddata_en to DFI.rddata_valid
+            write_latency: int,  # latency (MC clk) from DFI.wrdata_en to DFI.wrdata
+            strobes: Optional[int] = None,  # number of DQS lines
+            nranks: int = 1,  # number of DRAM ranks
+            cwl: Optional[int] = None,  # latency (DRAM clk) from WRITE command to first data
+            cmd_latency: Optional[int] = None,  # additional command latency (MC clk)
+            cmd_delay: Optional[int] = None,  # used to force cmd delay during initialization in BIOS
+            bitslips: int = 0,  # number of write/read bitslip taps
+            delays: int = 0,  # number of write/read delay taps
+            # PHY training capabilities
+            write_leveling: bool = False,
+            write_dq_dqs_training: bool = False,
+            write_latency_calibration: bool = False,
+            read_leveling: bool = False,
+        ):
+        if strobes is None:
+            strobes = databits // 8
+        self.set_attributes(locals())
+        self.cwl = cl if cwl is None else cwl
+        self.is_rdimm = False
 
-        # up conversion
-        data["8bit_to_16bit"] = dict(
-            pattern  = data["8bit_to_32bit"]["pattern"].copy(),
-            expected = half_width(data["8bit_to_32bit"]["expected"], from_width=32),
-        )
-        data["32bit_to_128bit"] = dict(
-            pattern  = data["32bit_to_256bit"]["pattern"].copy(),
-            expected = half_width(data["32bit_to_256bit"]["expected"], from_width=256),
-        )
-        data["32bit_to_64bit"] = dict(
-            pattern  = data["32bit_to_128bit"]["pattern"].copy(),
-            expected = half_width(data["32bit_to_128bit"]["expected"], from_width=128),
-        )
-        data["8bit_to_128bit"] = dict(
-            pattern  = data["8bit_to_256bit"]["pattern"].copy(),
-            expected = half_width(data["8bit_to_256bit"]["expected"], from_width=256),
-        )
+    # Optional DDR3/DDR4 electrical settings:
+    # rtt_nom: Non-Writes on-die termination impedance
+    # rtt_wr: Writes on-die termination impedance
+    # ron: Output driver impedance
+    # tdqs: Termination Data Strobe enable.
+    def add_electrical_settings(self, rtt_nom=None, rtt_wr=None, ron=None, tdqs=None):
+        assert self.memtype in ["DDR3", "DDR4"]
+        if rtt_nom is not None:
+            self.rtt = rtt_nom
+        if rtt_wr is not None:
+            self.rtt_wr = rtt_wr
+        if ron is not None:
+            self.ron = ron
+        if tdqs is not None:
+            self.tdqs = tdqs
 
-        return data
+    # Optional RDIMM configuration
+    def set_rdimm(self, tck, rcd_pll_bypass, rcd_ca_cs_drive, rcd_odt_cke_drive, rcd_clk_drive):
+        assert self.memtype == "DDR4"
+        self.is_rdimm = True
+        self.set_attributes(locals())
+
+class GeomSettings(Settings):
+    def __init__(self, bankbits, rowbits, colbits):
+        self.set_attributes(locals())
+        self.addressbits = max(rowbits, colbits)
+
+
+class TimingSettings(Settings):
+    def __init__(self, tRP, tRCD, tWR, tWTR, tREFI, tRFC, tFAW, tCCD, tRRD, tRC, tRAS, tZQCS):
+        self.set_attributes(locals())
+
+# Layouts/Interface --------------------------------------------------------------------------------
+
+def cmd_layout(address_width):
+    return [
+        ("valid",            1, DIR_M_TO_S),
+        ("ready",            1, DIR_S_TO_M),
+        ("mw",               1, DIR_M_TO_S),
+        ("we",               1, DIR_M_TO_S),
+        ("addr", address_width, DIR_M_TO_S),
+        ("lock",             1, DIR_S_TO_M), # only used internally
+
+        ("wdata_ready",      1, DIR_S_TO_M),
+        ("rdata_valid",      1, DIR_S_TO_M)
+    ]
+
+def data_layout(data_width):
+    return [
+        ("wdata",       data_width, DIR_M_TO_S),
+        ("wdata_we", data_width//8, DIR_M_TO_S),
+        ("rdata",       data_width, DIR_S_TO_M)
+    ]
+
+def cmd_request_layout(a, ba):
+    return [
+        ("a",     a),
+        ("ba",   ba),
+        ("cas",   1),
+        ("ras",   1),
+        ("we",    1)
+    ]
+
+def cmd_request_rw_layout(a, ba):
+    return cmd_request_layout(a, ba) + [
+        ("is_cmd", 1),
+        ("is_read", 1),
+        ("is_write", 1),
+        ("is_mw",1)
+    ]
+
+
+class LiteDRAMInterface(Record):
+    def __init__(self, address_align, settings):
+        rankbits = log2_int(settings.phy.nranks)
+        self.address_align = address_align
+        self.address_width = settings.geom.rowbits + settings.geom.colbits + rankbits - address_align
+        self.data_width    = settings.phy.dfi_databits*settings.phy.nphases
+        self.nbanks   = settings.phy.nranks*(2**settings.geom.bankbits)
+        self.nranks   = settings.phy.nranks
+        self.settings = settings
+
+        layout = [("bank"+str(i), cmd_layout(self.address_width)) for i in range(self.nbanks)]
+        layout += data_layout(self.data_width)
+        Record.__init__(self, layout)
+
+# Ports --------------------------------------------------------------------------------------------
+
+def cmd_description(address_width):
+    return [
+        ("mw",               1), # Masked write (1) or Write(0) when we is high
+        ("we",               1), # Write (1) or Read (0).
+        ("addr", address_width)  # Address (in Controller's words).
+    ]
+
+def wdata_description(data_width):
+    return [
+        ("data",    data_width), # Write Data.
+        ("we",   data_width//8), # Write Data byte enable.
+    ]
+
+def rdata_description(data_width):
+    return [("data", data_width)] # Read Data.
+
+class LiteDRAMNativePort(Settings):
+    def __init__(self, mode, address_width, data_width, clock_domain="sys", id=0):
+        self.set_attributes(locals())
+
+        self.flush = Signal()
+        self.lock  = Signal()
+
+        self.cmd   = stream.Endpoint(cmd_description(address_width))
+        self.wdata = stream.Endpoint(wdata_description(data_width))
+        self.rdata = stream.Endpoint(rdata_description(data_width))
+
+        # retro-compatibility # FIXME: remove
+        self.aw = self.address_width
+        self.dw = self.data_width
+        self.cd = self.clock_domain
+
+    def get_bank_address(self, bank_bits, cba_shift):
+        cba_upper = cba_shift + bank_bits
+        return self.cmd.addr[cba_shift:cba_upper]
+
+    def get_row_column_address(self, bank_bits, rca_bits, cba_shift):
+        cba_upper = cba_shift + bank_bits
+        if cba_shift < rca_bits:
+            if cba_shift:
+                return Cat(self.cmd.addr[:cba_shift], self.cmd.addr[cba_upper:])
+            else:
+                return self.cmd.addr[cba_upper:]
+        else:
+            return self.cmd.addr[:cba_shift]
+
+    def connect(self, port):
+        return [
+            self.cmd.connect(port.cmd),
+            self.wdata.connect(port.wdata),
+            port.rdata.connect(self.rdata),
+            port.flush.eq(self.flush),
+            self.lock.eq(port.lock),
+        ]
+
+class LiteDRAMNativeWritePort(LiteDRAMNativePort):
+    def __init__(self, *args, **kwargs):
+        LiteDRAMNativePort.__init__(self, "write", *args, **kwargs)
+
+
+class LiteDRAMNativeReadPort(LiteDRAMNativePort):
+    def __init__(self, *args, **kwargs):
+        LiteDRAMNativePort.__init__(self, "read", *args, **kwargs)
+
+
+# Timing Controllers -------------------------------------------------------------------------------
+
+class tXXDController(Module):
+    def __init__(self, txxd):
+        self.valid = valid = Signal()
+        self.ready = ready = Signal(reset=txxd is None)
+        ready.attr.add("no_retiming")
+
+        # # #
+
+        if txxd is not None:
+            count=Signal
+            if isinstance(txxd, Signal):
+                #print("txxd is a signal")
+                count=Signal.like(txxd)
+            else:
+                count = Signal(max=max(txxd, 2))
+            self.sync += \
+                If(valid,
+                    count.eq(txxd - 1),
+                    If((txxd - 1) == 0,
+                        ready.eq(1)
+                    ).Else(
+                        ready.eq(0)
+                    )
+                ).Elif(~ready,
+                    count.eq(count - 1),
+                    If(count == 1,
+                        ready.eq(1)
+                    )
+                )
+
+
+class tFAWController(Module):
+    def __init__(self, tfaw):
+        self.valid = valid = Signal()
+        self.ready = ready = Signal(reset=1)
+        ready.attr.add("no_retiming")
+
+        # # #
+
+        if tfaw is not None:
+            if isinstance(tfaw,Signal):
+                count = Signal.like(tfaw)
+            else:
+                count  = Signal(max=max(tfaw, 2))
+            window_c = Signal(64)
+            window = Signal(64)
+            self.sync += window_c.eq(Cat(valid, window))
+            for i in range(64):
+                self.comb += If(i<tfaw,window[i].eq(window_c[i])).Else(window[i].eq(0))
+            self.comb += count.eq(reduce(add, [window[i] for i in range(64)]))
+            self.sync += \
+                If(count < 4,
+                    If(count == 3,
+                        ready.eq(~valid)
+                    ).Else(
+                        ready.eq(1)
+                    )
+                )

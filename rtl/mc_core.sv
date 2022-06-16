@@ -130,9 +130,9 @@ module mc_core(
 
 	//wishbone bus
 	input [31:0] wishbone_port_adr,
-	input [255:0] wishbone_port_dat_w,
-	output reg [255:0] wishbone_port_dat_r,
-	input [31:0] wishbone_port_sel,
+	input [31:0] wishbone_port_dat_w,
+	output reg [31:0] wishbone_port_dat_r,
+	input [3:0] wishbone_port_sel,
 	input wishbone_port_cyc,
 	input wishbone_port_stb,
 	output reg wishbone_port_ack,
