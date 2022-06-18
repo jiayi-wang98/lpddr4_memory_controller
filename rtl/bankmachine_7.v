@@ -28,7 +28,7 @@ module bankmachine_7(
 	input [7:0] bm_tRAS_cfg,
 	input [7:0] bm_tRP_cfg,
 	input [7:0] bm_tRCD_cfg,
-	input [7:0] bm_tRCD_cfg_1,
+	input [7:0] bm_tCCDMW_cfg,
 	input sys_clk,
 	input sys_rst
 );
@@ -374,8 +374,8 @@ always @(posedge sys_clk) begin
 		cmd_buffer_source_payload_addr <= cmd_buffer_sink_payload_addr;
 	end
 	if (tccdmwcon_valid) begin
-		tccdmwcon_count <= (bm_tRCD_cfg_1 - 1'd1);
-		if (((bm_tRCD_cfg_1 - 1'd1) == 1'd0)) begin
+		tccdmwcon_count <= (bm_tCCDMW_cfg - 1'd1);
+		if (((bm_tCCDMW_cfg - 1'd1) == 1'd0)) begin
 			tccdmwcon_ready <= 1'd1;
 		end else begin
 			tccdmwcon_ready <= 1'd0;
