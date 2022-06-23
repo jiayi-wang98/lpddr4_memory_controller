@@ -542,7 +542,7 @@ crossbar_2ports u_crossbar_2ports (
     .cmd_first_1                    (native_cmd_first_1),
     .cmd_last_1                     (native_cmd_last_1),
     .cmd_payload_we_1               (native_cmd_payload_we_1),
-    .cmd_payload_mw                 (native_cmd_payload_mw_1),
+    .cmd_payload_mw_1               (native_cmd_payload_mw_1),
     .cmd_payload_addr_1             (native_cmd_payload_addr_1),
     .wdata_valid_1                  (wdata_valid_1),
     .wdata_ready_1                  (wdata_ready_1),

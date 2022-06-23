@@ -235,6 +235,7 @@ reg choose_cmd_cmd_payload_we;
 wire choose_cmd_cmd_payload_is_cmd;
 wire choose_cmd_cmd_payload_is_read;
 wire choose_cmd_cmd_payload_is_write;
+reg choose_cmd_cmd_payload_is_mw;
 reg [7:0] choose_cmd_valids;
 wire [7:0] choose_cmd_request;
 reg [2:0] choose_cmd_grant = 3'd0;
@@ -253,7 +254,7 @@ reg choose_req_cmd_payload_we;
 wire choose_req_cmd_payload_is_cmd;
 wire choose_req_cmd_payload_is_read;
 wire choose_req_cmd_payload_is_write;
-reg choose_req_cmd_payload_is_mw = 1'd0;
+reg choose_req_cmd_payload_is_mw;
 reg [7:0] choose_req_valids;
 wire [7:0] choose_req_request;
 reg [2:0] choose_req_grant = 3'd0;
@@ -317,15 +318,17 @@ reg rhs_array_muxed5;
 reg t_array_muxed0;
 reg t_array_muxed1;
 reg t_array_muxed2;
+reg t_array_muxed3;
 reg rhs_array_muxed6;
 reg [16:0] rhs_array_muxed7;
 reg [2:0] rhs_array_muxed8;
 reg rhs_array_muxed9;
 reg rhs_array_muxed10;
 reg rhs_array_muxed11;
-reg t_array_muxed3;
 reg t_array_muxed4;
 reg t_array_muxed5;
+reg t_array_muxed6;
+reg t_array_muxed7;
 reg [2:0] array_muxed0;
 reg [16:0] array_muxed1;
 reg array_muxed2;
@@ -460,10 +463,23 @@ always @(*) begin
 	dummy_d_3 <= dummy_s;
 // synthesis translate_on
 end
-assign choose_cmd_ce = (choose_cmd_cmd_ready | (~choose_cmd_cmd_valid));
 
 // synthesis translate_off
 reg dummy_d_4;
+// synthesis translate_on
+always @(*) begin
+	choose_cmd_cmd_payload_is_mw <= 1'd0;
+	if (choose_cmd_cmd_valid) begin
+		choose_cmd_cmd_payload_is_mw <= t_array_muxed3;
+	end
+// synthesis translate_off
+	dummy_d_4 <= dummy_s;
+// synthesis translate_on
+end
+assign choose_cmd_ce = (choose_cmd_cmd_ready | (~choose_cmd_cmd_valid));
+
+// synthesis translate_off
+reg dummy_d_5;
 // synthesis translate_on
 always @(*) begin
 	choose_req_valids <= 8'd0;
@@ -476,7 +492,7 @@ always @(*) begin
 	choose_req_valids[6] <= (cmd_valid_7 & (((cmd_payload_is_cmd_7 & choose_req_want_cmds) & ((~((cmd_payload_ras_7 & (~cmd_payload_cas_7)) & (~cmd_payload_we_7))) | choose_req_want_activates)) | ((cmd_payload_is_read_7 == choose_req_want_reads) & (cmd_payload_is_write_7 == choose_req_want_writes))));
 	choose_req_valids[7] <= (cmd_valid_8 & (((cmd_payload_is_cmd_8 & choose_req_want_cmds) & ((~((cmd_payload_ras_8 & (~cmd_payload_cas_8)) & (~cmd_payload_we_8))) | choose_req_want_activates)) | ((cmd_payload_is_read_8 == choose_req_want_reads) & (cmd_payload_is_write_8 == choose_req_want_writes))));
 // synthesis translate_off
-	dummy_d_4 <= dummy_s;
+	dummy_d_5 <= dummy_s;
 // synthesis translate_on
 end
 assign choose_req_request = choose_req_valids;
@@ -488,25 +504,12 @@ assign choose_req_cmd_payload_is_write = rhs_array_muxed10;
 assign choose_req_cmd_payload_is_cmd = rhs_array_muxed11;
 
 // synthesis translate_off
-reg dummy_d_5;
+reg dummy_d_6;
 // synthesis translate_on
 always @(*) begin
 	choose_req_cmd_payload_cas <= 1'd0;
 	if (choose_req_cmd_valid) begin
-		choose_req_cmd_payload_cas <= t_array_muxed3;
-	end
-// synthesis translate_off
-	dummy_d_5 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_6;
-// synthesis translate_on
-always @(*) begin
-	choose_req_cmd_payload_ras <= 1'd0;
-	if (choose_req_cmd_valid) begin
-		choose_req_cmd_payload_ras <= t_array_muxed4;
+		choose_req_cmd_payload_cas <= t_array_muxed4;
 	end
 // synthesis translate_off
 	dummy_d_6 <= dummy_s;
@@ -517,9 +520,9 @@ end
 reg dummy_d_7;
 // synthesis translate_on
 always @(*) begin
-	choose_req_cmd_payload_we <= 1'd0;
+	choose_req_cmd_payload_ras <= 1'd0;
 	if (choose_req_cmd_valid) begin
-		choose_req_cmd_payload_we <= t_array_muxed5;
+		choose_req_cmd_payload_ras <= t_array_muxed5;
 	end
 // synthesis translate_off
 	dummy_d_7 <= dummy_s;
@@ -530,12 +533,9 @@ end
 reg dummy_d_8;
 // synthesis translate_on
 always @(*) begin
-	cmd_ready_1 <= 1'd0;
-	if (((choose_cmd_cmd_valid & choose_cmd_cmd_ready) & (choose_cmd_grant == 1'd0))) begin
-		cmd_ready_1 <= 1'd1;
-	end
-	if (((choose_req_cmd_valid & choose_req_cmd_ready) & (choose_req_grant == 1'd0))) begin
-		cmd_ready_1 <= 1'd1;
+	choose_req_cmd_payload_we <= 1'd0;
+	if (choose_req_cmd_valid) begin
+		choose_req_cmd_payload_we <= t_array_muxed6;
 	end
 // synthesis translate_off
 	dummy_d_8 <= dummy_s;
@@ -546,12 +546,9 @@ end
 reg dummy_d_9;
 // synthesis translate_on
 always @(*) begin
-	cmd_ready_2 <= 1'd0;
-	if (((choose_cmd_cmd_valid & choose_cmd_cmd_ready) & (choose_cmd_grant == 1'd1))) begin
-		cmd_ready_2 <= 1'd1;
-	end
-	if (((choose_req_cmd_valid & choose_req_cmd_ready) & (choose_req_grant == 1'd1))) begin
-		cmd_ready_2 <= 1'd1;
+	choose_req_cmd_payload_is_mw <= 1'd0;
+	if (choose_req_cmd_valid) begin
+		choose_req_cmd_payload_is_mw <= t_array_muxed7;
 	end
 // synthesis translate_off
 	dummy_d_9 <= dummy_s;
@@ -562,12 +559,12 @@ end
 reg dummy_d_10;
 // synthesis translate_on
 always @(*) begin
-	cmd_ready_3 <= 1'd0;
-	if (((choose_cmd_cmd_valid & choose_cmd_cmd_ready) & (choose_cmd_grant == 2'd2))) begin
-		cmd_ready_3 <= 1'd1;
+	cmd_ready_1 <= 1'd0;
+	if (((choose_cmd_cmd_valid & choose_cmd_cmd_ready) & (choose_cmd_grant == 1'd0))) begin
+		cmd_ready_1 <= 1'd1;
 	end
-	if (((choose_req_cmd_valid & choose_req_cmd_ready) & (choose_req_grant == 2'd2))) begin
-		cmd_ready_3 <= 1'd1;
+	if (((choose_req_cmd_valid & choose_req_cmd_ready) & (choose_req_grant == 1'd0))) begin
+		cmd_ready_1 <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_10 <= dummy_s;
@@ -578,12 +575,12 @@ end
 reg dummy_d_11;
 // synthesis translate_on
 always @(*) begin
-	cmd_ready_4 <= 1'd0;
-	if (((choose_cmd_cmd_valid & choose_cmd_cmd_ready) & (choose_cmd_grant == 2'd3))) begin
-		cmd_ready_4 <= 1'd1;
+	cmd_ready_2 <= 1'd0;
+	if (((choose_cmd_cmd_valid & choose_cmd_cmd_ready) & (choose_cmd_grant == 1'd1))) begin
+		cmd_ready_2 <= 1'd1;
 	end
-	if (((choose_req_cmd_valid & choose_req_cmd_ready) & (choose_req_grant == 2'd3))) begin
-		cmd_ready_4 <= 1'd1;
+	if (((choose_req_cmd_valid & choose_req_cmd_ready) & (choose_req_grant == 1'd1))) begin
+		cmd_ready_2 <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_11 <= dummy_s;
@@ -594,12 +591,12 @@ end
 reg dummy_d_12;
 // synthesis translate_on
 always @(*) begin
-	cmd_ready_5 <= 1'd0;
-	if (((choose_cmd_cmd_valid & choose_cmd_cmd_ready) & (choose_cmd_grant == 3'd4))) begin
-		cmd_ready_5 <= 1'd1;
+	cmd_ready_3 <= 1'd0;
+	if (((choose_cmd_cmd_valid & choose_cmd_cmd_ready) & (choose_cmd_grant == 2'd2))) begin
+		cmd_ready_3 <= 1'd1;
 	end
-	if (((choose_req_cmd_valid & choose_req_cmd_ready) & (choose_req_grant == 3'd4))) begin
-		cmd_ready_5 <= 1'd1;
+	if (((choose_req_cmd_valid & choose_req_cmd_ready) & (choose_req_grant == 2'd2))) begin
+		cmd_ready_3 <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_12 <= dummy_s;
@@ -610,12 +607,12 @@ end
 reg dummy_d_13;
 // synthesis translate_on
 always @(*) begin
-	cmd_ready_6 <= 1'd0;
-	if (((choose_cmd_cmd_valid & choose_cmd_cmd_ready) & (choose_cmd_grant == 3'd5))) begin
-		cmd_ready_6 <= 1'd1;
+	cmd_ready_4 <= 1'd0;
+	if (((choose_cmd_cmd_valid & choose_cmd_cmd_ready) & (choose_cmd_grant == 2'd3))) begin
+		cmd_ready_4 <= 1'd1;
 	end
-	if (((choose_req_cmd_valid & choose_req_cmd_ready) & (choose_req_grant == 3'd5))) begin
-		cmd_ready_6 <= 1'd1;
+	if (((choose_req_cmd_valid & choose_req_cmd_ready) & (choose_req_grant == 2'd3))) begin
+		cmd_ready_4 <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_13 <= dummy_s;
@@ -626,12 +623,12 @@ end
 reg dummy_d_14;
 // synthesis translate_on
 always @(*) begin
-	cmd_ready_7 <= 1'd0;
-	if (((choose_cmd_cmd_valid & choose_cmd_cmd_ready) & (choose_cmd_grant == 3'd6))) begin
-		cmd_ready_7 <= 1'd1;
+	cmd_ready_5 <= 1'd0;
+	if (((choose_cmd_cmd_valid & choose_cmd_cmd_ready) & (choose_cmd_grant == 3'd4))) begin
+		cmd_ready_5 <= 1'd1;
 	end
-	if (((choose_req_cmd_valid & choose_req_cmd_ready) & (choose_req_grant == 3'd6))) begin
-		cmd_ready_7 <= 1'd1;
+	if (((choose_req_cmd_valid & choose_req_cmd_ready) & (choose_req_grant == 3'd4))) begin
+		cmd_ready_5 <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_14 <= dummy_s;
@@ -642,6 +639,38 @@ end
 reg dummy_d_15;
 // synthesis translate_on
 always @(*) begin
+	cmd_ready_6 <= 1'd0;
+	if (((choose_cmd_cmd_valid & choose_cmd_cmd_ready) & (choose_cmd_grant == 3'd5))) begin
+		cmd_ready_6 <= 1'd1;
+	end
+	if (((choose_req_cmd_valid & choose_req_cmd_ready) & (choose_req_grant == 3'd5))) begin
+		cmd_ready_6 <= 1'd1;
+	end
+// synthesis translate_off
+	dummy_d_15 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_16;
+// synthesis translate_on
+always @(*) begin
+	cmd_ready_7 <= 1'd0;
+	if (((choose_cmd_cmd_valid & choose_cmd_cmd_ready) & (choose_cmd_grant == 3'd6))) begin
+		cmd_ready_7 <= 1'd1;
+	end
+	if (((choose_req_cmd_valid & choose_req_cmd_ready) & (choose_req_grant == 3'd6))) begin
+		cmd_ready_7 <= 1'd1;
+	end
+// synthesis translate_off
+	dummy_d_16 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_17;
+// synthesis translate_on
+always @(*) begin
 	cmd_ready_8 <= 1'd0;
 	if (((choose_cmd_cmd_valid & choose_cmd_cmd_ready) & (choose_cmd_grant == 3'd7))) begin
 		cmd_ready_8 <= 1'd1;
@@ -650,7 +679,7 @@ always @(*) begin
 		cmd_ready_8 <= 1'd1;
 	end
 // synthesis translate_off
-	dummy_d_15 <= dummy_s;
+	dummy_d_17 <= dummy_s;
 // synthesis translate_on
 end
 assign choose_req_ce = (choose_req_cmd_ready | (~choose_req_cmd_valid));
@@ -668,7 +697,7 @@ assign dfi_p3_cke = {1{steerer6}};
 assign dfi_p3_odt = {1{steerer7}};
 
 // synthesis translate_off
-reg dummy_d_16;
+reg dummy_d_18;
 // synthesis translate_on
 always @(*) begin
 	tfawcon_window <= 64'd0;
@@ -993,13 +1022,13 @@ always @(*) begin
 		tfawcon_window[63] <= 1'd0;
 	end
 // synthesis translate_off
-	dummy_d_16 <= dummy_s;
+	dummy_d_18 <= dummy_s;
 // synthesis translate_on
 end
 assign tfawcon_count = (((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((tfawcon_window[0] + tfawcon_window[1]) + tfawcon_window[2]) + tfawcon_window[3]) + tfawcon_window[4]) + tfawcon_window[5]) + tfawcon_window[6]) + tfawcon_window[7]) + tfawcon_window[8]) + tfawcon_window[9]) + tfawcon_window[10]) + tfawcon_window[11]) + tfawcon_window[12]) + tfawcon_window[13]) + tfawcon_window[14]) + tfawcon_window[15]) + tfawcon_window[16]) + tfawcon_window[17]) + tfawcon_window[18]) + tfawcon_window[19]) + tfawcon_window[20]) + tfawcon_window[21]) + tfawcon_window[22]) + tfawcon_window[23]) + tfawcon_window[24]) + tfawcon_window[25]) + tfawcon_window[26]) + tfawcon_window[27]) + tfawcon_window[28]) + tfawcon_window[29]) + tfawcon_window[30]) + tfawcon_window[31]) + tfawcon_window[32]) + tfawcon_window[33]) + tfawcon_window[34]) + tfawcon_window[35]) + tfawcon_window[36]) + tfawcon_window[37]) + tfawcon_window[38]) + tfawcon_window[39]) + tfawcon_window[40]) + tfawcon_window[41]) + tfawcon_window[42]) + tfawcon_window[43]) + tfawcon_window[44]) + tfawcon_window[45]) + tfawcon_window[46]) + tfawcon_window[47]) + tfawcon_window[48]) + tfawcon_window[49]) + tfawcon_window[50]) + tfawcon_window[51]) + tfawcon_window[52]) + tfawcon_window[53]) + tfawcon_window[54]) + tfawcon_window[55]) + tfawcon_window[56]) + tfawcon_window[57]) + tfawcon_window[58]) + tfawcon_window[59]) + tfawcon_window[60]) + tfawcon_window[61]) + tfawcon_window[62]) + tfawcon_window[63]);
 
 // synthesis translate_off
-reg dummy_d_17;
+reg dummy_d_19;
 // synthesis translate_on
 always @(*) begin
 	cmd_ready <= 1'd0;
@@ -1162,12 +1191,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_17 <= dummy_s;
+	dummy_d_19 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_18;
+reg dummy_d_20;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed0 <= 1'd0;
@@ -1198,12 +1227,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_18 <= dummy_s;
+	dummy_d_20 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_19;
+reg dummy_d_21;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed1 <= 17'd0;
@@ -1234,12 +1263,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_19 <= dummy_s;
+	dummy_d_21 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_20;
+reg dummy_d_22;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed2 <= 3'd0;
@@ -1270,12 +1299,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_20 <= dummy_s;
+	dummy_d_22 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_21;
+reg dummy_d_23;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed3 <= 1'd0;
@@ -1306,12 +1335,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_21 <= dummy_s;
+	dummy_d_23 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_22;
+reg dummy_d_24;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed4 <= 1'd0;
@@ -1342,12 +1371,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_22 <= dummy_s;
+	dummy_d_24 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_23;
+reg dummy_d_25;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed5 <= 1'd0;
@@ -1378,12 +1407,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_23 <= dummy_s;
+	dummy_d_25 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_24;
+reg dummy_d_26;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed0 <= 1'd0;
@@ -1414,12 +1443,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_24 <= dummy_s;
+	dummy_d_26 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_25;
+reg dummy_d_27;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed1 <= 1'd0;
@@ -1450,12 +1479,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_25 <= dummy_s;
+	dummy_d_27 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_26;
+reg dummy_d_28;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed2 <= 1'd0;
@@ -1486,12 +1515,48 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_26 <= dummy_s;
+	dummy_d_28 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_27;
+reg dummy_d_29;
+// synthesis translate_on
+always @(*) begin
+	t_array_muxed3 <= 1'd0;
+	case (choose_cmd_grant)
+		1'd0: begin
+			t_array_muxed3 <= cmd_payload_is_mw_1;
+		end
+		1'd1: begin
+			t_array_muxed3 <= cmd_payload_is_mw_2;
+		end
+		2'd2: begin
+			t_array_muxed3 <= cmd_payload_is_mw_3;
+		end
+		2'd3: begin
+			t_array_muxed3 <= cmd_payload_is_mw_4;
+		end
+		3'd4: begin
+			t_array_muxed3 <= cmd_payload_is_mw_5;
+		end
+		3'd5: begin
+			t_array_muxed3 <= cmd_payload_is_mw_6;
+		end
+		3'd6: begin
+			t_array_muxed3 <= cmd_payload_is_mw_7;
+		end
+		default: begin
+			t_array_muxed3 <= cmd_payload_is_mw_8;
+		end
+	endcase
+// synthesis translate_off
+	dummy_d_29 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_30;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed6 <= 1'd0;
@@ -1522,12 +1587,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_27 <= dummy_s;
+	dummy_d_30 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_28;
+reg dummy_d_31;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed7 <= 17'd0;
@@ -1558,12 +1623,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_28 <= dummy_s;
+	dummy_d_31 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_29;
+reg dummy_d_32;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed8 <= 3'd0;
@@ -1594,12 +1659,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_29 <= dummy_s;
+	dummy_d_32 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_30;
+reg dummy_d_33;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed9 <= 1'd0;
@@ -1630,12 +1695,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_30 <= dummy_s;
+	dummy_d_33 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_31;
+reg dummy_d_34;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed10 <= 1'd0;
@@ -1666,12 +1731,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_31 <= dummy_s;
+	dummy_d_34 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_32;
+reg dummy_d_35;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed11 <= 1'd0;
@@ -1702,120 +1767,156 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_32 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_33;
-// synthesis translate_on
-always @(*) begin
-	t_array_muxed3 <= 1'd0;
-	case (choose_req_grant)
-		1'd0: begin
-			t_array_muxed3 <= cmd_payload_cas_1;
-		end
-		1'd1: begin
-			t_array_muxed3 <= cmd_payload_cas_2;
-		end
-		2'd2: begin
-			t_array_muxed3 <= cmd_payload_cas_3;
-		end
-		2'd3: begin
-			t_array_muxed3 <= cmd_payload_cas_4;
-		end
-		3'd4: begin
-			t_array_muxed3 <= cmd_payload_cas_5;
-		end
-		3'd5: begin
-			t_array_muxed3 <= cmd_payload_cas_6;
-		end
-		3'd6: begin
-			t_array_muxed3 <= cmd_payload_cas_7;
-		end
-		default: begin
-			t_array_muxed3 <= cmd_payload_cas_8;
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_33 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_34;
-// synthesis translate_on
-always @(*) begin
-	t_array_muxed4 <= 1'd0;
-	case (choose_req_grant)
-		1'd0: begin
-			t_array_muxed4 <= cmd_payload_ras_1;
-		end
-		1'd1: begin
-			t_array_muxed4 <= cmd_payload_ras_2;
-		end
-		2'd2: begin
-			t_array_muxed4 <= cmd_payload_ras_3;
-		end
-		2'd3: begin
-			t_array_muxed4 <= cmd_payload_ras_4;
-		end
-		3'd4: begin
-			t_array_muxed4 <= cmd_payload_ras_5;
-		end
-		3'd5: begin
-			t_array_muxed4 <= cmd_payload_ras_6;
-		end
-		3'd6: begin
-			t_array_muxed4 <= cmd_payload_ras_7;
-		end
-		default: begin
-			t_array_muxed4 <= cmd_payload_ras_8;
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_34 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_35;
-// synthesis translate_on
-always @(*) begin
-	t_array_muxed5 <= 1'd0;
-	case (choose_req_grant)
-		1'd0: begin
-			t_array_muxed5 <= cmd_payload_we_1;
-		end
-		1'd1: begin
-			t_array_muxed5 <= cmd_payload_we_2;
-		end
-		2'd2: begin
-			t_array_muxed5 <= cmd_payload_we_3;
-		end
-		2'd3: begin
-			t_array_muxed5 <= cmd_payload_we_4;
-		end
-		3'd4: begin
-			t_array_muxed5 <= cmd_payload_we_5;
-		end
-		3'd5: begin
-			t_array_muxed5 <= cmd_payload_we_6;
-		end
-		3'd6: begin
-			t_array_muxed5 <= cmd_payload_we_7;
-		end
-		default: begin
-			t_array_muxed5 <= cmd_payload_we_8;
-		end
-	endcase
-// synthesis translate_off
 	dummy_d_35 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
 reg dummy_d_36;
+// synthesis translate_on
+always @(*) begin
+	t_array_muxed4 <= 1'd0;
+	case (choose_req_grant)
+		1'd0: begin
+			t_array_muxed4 <= cmd_payload_cas_1;
+		end
+		1'd1: begin
+			t_array_muxed4 <= cmd_payload_cas_2;
+		end
+		2'd2: begin
+			t_array_muxed4 <= cmd_payload_cas_3;
+		end
+		2'd3: begin
+			t_array_muxed4 <= cmd_payload_cas_4;
+		end
+		3'd4: begin
+			t_array_muxed4 <= cmd_payload_cas_5;
+		end
+		3'd5: begin
+			t_array_muxed4 <= cmd_payload_cas_6;
+		end
+		3'd6: begin
+			t_array_muxed4 <= cmd_payload_cas_7;
+		end
+		default: begin
+			t_array_muxed4 <= cmd_payload_cas_8;
+		end
+	endcase
+// synthesis translate_off
+	dummy_d_36 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_37;
+// synthesis translate_on
+always @(*) begin
+	t_array_muxed5 <= 1'd0;
+	case (choose_req_grant)
+		1'd0: begin
+			t_array_muxed5 <= cmd_payload_ras_1;
+		end
+		1'd1: begin
+			t_array_muxed5 <= cmd_payload_ras_2;
+		end
+		2'd2: begin
+			t_array_muxed5 <= cmd_payload_ras_3;
+		end
+		2'd3: begin
+			t_array_muxed5 <= cmd_payload_ras_4;
+		end
+		3'd4: begin
+			t_array_muxed5 <= cmd_payload_ras_5;
+		end
+		3'd5: begin
+			t_array_muxed5 <= cmd_payload_ras_6;
+		end
+		3'd6: begin
+			t_array_muxed5 <= cmd_payload_ras_7;
+		end
+		default: begin
+			t_array_muxed5 <= cmd_payload_ras_8;
+		end
+	endcase
+// synthesis translate_off
+	dummy_d_37 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_38;
+// synthesis translate_on
+always @(*) begin
+	t_array_muxed6 <= 1'd0;
+	case (choose_req_grant)
+		1'd0: begin
+			t_array_muxed6 <= cmd_payload_we_1;
+		end
+		1'd1: begin
+			t_array_muxed6 <= cmd_payload_we_2;
+		end
+		2'd2: begin
+			t_array_muxed6 <= cmd_payload_we_3;
+		end
+		2'd3: begin
+			t_array_muxed6 <= cmd_payload_we_4;
+		end
+		3'd4: begin
+			t_array_muxed6 <= cmd_payload_we_5;
+		end
+		3'd5: begin
+			t_array_muxed6 <= cmd_payload_we_6;
+		end
+		3'd6: begin
+			t_array_muxed6 <= cmd_payload_we_7;
+		end
+		default: begin
+			t_array_muxed6 <= cmd_payload_we_8;
+		end
+	endcase
+// synthesis translate_off
+	dummy_d_38 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_39;
+// synthesis translate_on
+always @(*) begin
+	t_array_muxed7 <= 1'd0;
+	case (choose_req_grant)
+		1'd0: begin
+			t_array_muxed7 <= cmd_payload_is_mw_1;
+		end
+		1'd1: begin
+			t_array_muxed7 <= cmd_payload_is_mw_2;
+		end
+		2'd2: begin
+			t_array_muxed7 <= cmd_payload_is_mw_3;
+		end
+		2'd3: begin
+			t_array_muxed7 <= cmd_payload_is_mw_4;
+		end
+		3'd4: begin
+			t_array_muxed7 <= cmd_payload_is_mw_5;
+		end
+		3'd5: begin
+			t_array_muxed7 <= cmd_payload_is_mw_6;
+		end
+		3'd6: begin
+			t_array_muxed7 <= cmd_payload_is_mw_7;
+		end
+		default: begin
+			t_array_muxed7 <= cmd_payload_is_mw_8;
+		end
+	endcase
+// synthesis translate_off
+	dummy_d_39 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_40;
 // synthesis translate_on
 always @(*) begin
 	array_muxed0 <= 3'd0;
@@ -1834,12 +1935,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_36 <= dummy_s;
+	dummy_d_40 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_37;
+reg dummy_d_41;
 // synthesis translate_on
 always @(*) begin
 	array_muxed1 <= 17'd0;
@@ -1858,12 +1959,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_37 <= dummy_s;
+	dummy_d_41 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_38;
+reg dummy_d_42;
 // synthesis translate_on
 always @(*) begin
 	array_muxed2 <= 1'd0;
@@ -1882,12 +1983,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_38 <= dummy_s;
+	dummy_d_42 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_39;
+reg dummy_d_43;
 // synthesis translate_on
 always @(*) begin
 	array_muxed3 <= 1'd0;
@@ -1906,12 +2007,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_39 <= dummy_s;
+	dummy_d_43 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_40;
+reg dummy_d_44;
 // synthesis translate_on
 always @(*) begin
 	array_muxed4 <= 1'd0;
@@ -1930,12 +2031,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_40 <= dummy_s;
+	dummy_d_44 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_41;
+reg dummy_d_45;
 // synthesis translate_on
 always @(*) begin
 	array_muxed5 <= 1'd0;
@@ -1954,12 +2055,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_41 <= dummy_s;
+	dummy_d_45 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_42;
+reg dummy_d_46;
 // synthesis translate_on
 always @(*) begin
 	array_muxed6 <= 1'd0;
@@ -1978,12 +2079,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_42 <= dummy_s;
+	dummy_d_46 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_43;
+reg dummy_d_47;
 // synthesis translate_on
 always @(*) begin
 	array_muxed7 <= 1'd0;
@@ -2002,12 +2103,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_43 <= dummy_s;
+	dummy_d_47 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_44;
+reg dummy_d_48;
 // synthesis translate_on
 always @(*) begin
 	array_muxed8 <= 1'd0;
@@ -2026,12 +2127,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_44 <= dummy_s;
+	dummy_d_48 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_45;
+reg dummy_d_49;
 // synthesis translate_on
 always @(*) begin
 	array_muxed9 <= 1'd0;
@@ -2050,12 +2151,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_45 <= dummy_s;
+	dummy_d_49 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_46;
+reg dummy_d_50;
 // synthesis translate_on
 always @(*) begin
 	array_muxed10 <= 3'd0;
@@ -2074,12 +2175,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_46 <= dummy_s;
+	dummy_d_50 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_47;
+reg dummy_d_51;
 // synthesis translate_on
 always @(*) begin
 	array_muxed11 <= 17'd0;
@@ -2098,12 +2199,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_47 <= dummy_s;
+	dummy_d_51 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_48;
+reg dummy_d_52;
 // synthesis translate_on
 always @(*) begin
 	array_muxed12 <= 1'd0;
@@ -2122,12 +2223,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_48 <= dummy_s;
+	dummy_d_52 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_49;
+reg dummy_d_53;
 // synthesis translate_on
 always @(*) begin
 	array_muxed13 <= 1'd0;
@@ -2146,12 +2247,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_49 <= dummy_s;
+	dummy_d_53 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_50;
+reg dummy_d_54;
 // synthesis translate_on
 always @(*) begin
 	array_muxed14 <= 1'd0;
@@ -2170,12 +2271,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_50 <= dummy_s;
+	dummy_d_54 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_51;
+reg dummy_d_55;
 // synthesis translate_on
 always @(*) begin
 	array_muxed15 <= 1'd0;
@@ -2194,12 +2295,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_51 <= dummy_s;
+	dummy_d_55 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_52;
+reg dummy_d_56;
 // synthesis translate_on
 always @(*) begin
 	array_muxed16 <= 1'd0;
@@ -2218,12 +2319,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_52 <= dummy_s;
+	dummy_d_56 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_53;
+reg dummy_d_57;
 // synthesis translate_on
 always @(*) begin
 	array_muxed17 <= 1'd0;
@@ -2242,12 +2343,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_53 <= dummy_s;
+	dummy_d_57 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_54;
+reg dummy_d_58;
 // synthesis translate_on
 always @(*) begin
 	array_muxed18 <= 1'd0;
@@ -2266,12 +2367,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_54 <= dummy_s;
+	dummy_d_58 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_55;
+reg dummy_d_59;
 // synthesis translate_on
 always @(*) begin
 	array_muxed19 <= 1'd0;
@@ -2290,12 +2391,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_55 <= dummy_s;
+	dummy_d_59 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_56;
+reg dummy_d_60;
 // synthesis translate_on
 always @(*) begin
 	array_muxed20 <= 3'd0;
@@ -2314,12 +2415,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_56 <= dummy_s;
+	dummy_d_60 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_57;
+reg dummy_d_61;
 // synthesis translate_on
 always @(*) begin
 	array_muxed21 <= 17'd0;
@@ -2338,12 +2439,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_57 <= dummy_s;
+	dummy_d_61 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_58;
+reg dummy_d_62;
 // synthesis translate_on
 always @(*) begin
 	array_muxed22 <= 1'd0;
@@ -2362,12 +2463,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_58 <= dummy_s;
+	dummy_d_62 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_59;
+reg dummy_d_63;
 // synthesis translate_on
 always @(*) begin
 	array_muxed23 <= 1'd0;
@@ -2386,12 +2487,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_59 <= dummy_s;
+	dummy_d_63 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_60;
+reg dummy_d_64;
 // synthesis translate_on
 always @(*) begin
 	array_muxed24 <= 1'd0;
@@ -2410,12 +2511,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_60 <= dummy_s;
+	dummy_d_64 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_61;
+reg dummy_d_65;
 // synthesis translate_on
 always @(*) begin
 	array_muxed25 <= 1'd0;
@@ -2434,12 +2535,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_61 <= dummy_s;
+	dummy_d_65 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_62;
+reg dummy_d_66;
 // synthesis translate_on
 always @(*) begin
 	array_muxed26 <= 1'd0;
@@ -2458,12 +2559,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_62 <= dummy_s;
+	dummy_d_66 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_63;
+reg dummy_d_67;
 // synthesis translate_on
 always @(*) begin
 	array_muxed27 <= 1'd0;
@@ -2482,12 +2583,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_63 <= dummy_s;
+	dummy_d_67 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_64;
+reg dummy_d_68;
 // synthesis translate_on
 always @(*) begin
 	array_muxed28 <= 1'd0;
@@ -2506,12 +2607,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_64 <= dummy_s;
+	dummy_d_68 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_65;
+reg dummy_d_69;
 // synthesis translate_on
 always @(*) begin
 	array_muxed29 <= 1'd0;
@@ -2530,12 +2631,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_65 <= dummy_s;
+	dummy_d_69 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_66;
+reg dummy_d_70;
 // synthesis translate_on
 always @(*) begin
 	array_muxed30 <= 3'd0;
@@ -2554,12 +2655,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_66 <= dummy_s;
+	dummy_d_70 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_67;
+reg dummy_d_71;
 // synthesis translate_on
 always @(*) begin
 	array_muxed31 <= 17'd0;
@@ -2578,12 +2679,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_67 <= dummy_s;
+	dummy_d_71 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_68;
+reg dummy_d_72;
 // synthesis translate_on
 always @(*) begin
 	array_muxed32 <= 1'd0;
@@ -2602,12 +2703,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_68 <= dummy_s;
+	dummy_d_72 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_69;
+reg dummy_d_73;
 // synthesis translate_on
 always @(*) begin
 	array_muxed33 <= 1'd0;
@@ -2626,12 +2727,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_69 <= dummy_s;
+	dummy_d_73 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_70;
+reg dummy_d_74;
 // synthesis translate_on
 always @(*) begin
 	array_muxed34 <= 1'd0;
@@ -2650,12 +2751,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_70 <= dummy_s;
+	dummy_d_74 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_71;
+reg dummy_d_75;
 // synthesis translate_on
 always @(*) begin
 	array_muxed35 <= 1'd0;
@@ -2674,12 +2775,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_71 <= dummy_s;
+	dummy_d_75 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_72;
+reg dummy_d_76;
 // synthesis translate_on
 always @(*) begin
 	array_muxed36 <= 1'd0;
@@ -2698,12 +2799,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_72 <= dummy_s;
+	dummy_d_76 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_73;
+reg dummy_d_77;
 // synthesis translate_on
 always @(*) begin
 	array_muxed37 <= 1'd0;
@@ -2722,12 +2823,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_73 <= dummy_s;
+	dummy_d_77 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_74;
+reg dummy_d_78;
 // synthesis translate_on
 always @(*) begin
 	array_muxed38 <= 1'd0;
@@ -2746,12 +2847,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_74 <= dummy_s;
+	dummy_d_78 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_75;
+reg dummy_d_79;
 // synthesis translate_on
 always @(*) begin
 	array_muxed39 <= 1'd0;
@@ -2770,7 +2871,7 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_75 <= dummy_s;
+	dummy_d_79 <= dummy_s;
 // synthesis translate_on
 end
 
@@ -3267,7 +3368,7 @@ always @(posedge sys_clk) begin
 	dfi_p0_cas_n <= (~array_muxed2);
 	dfi_p0_ras_n <= (~array_muxed3);
 	dfi_p0_we_n <= (~array_muxed4);
-	dfi_p0_mw <= (~array_muxed5);
+	dfi_p0_mw <= array_muxed5;
 	steerer_rddata_en_dly0 <= array_muxed6;
 	steerer_wrdata_en_dly0 <= array_muxed7;
 	dfi_p0_rddata_en <= (array_muxed8 | steerer_rddata_en_dly0);
@@ -3278,7 +3379,7 @@ always @(posedge sys_clk) begin
 	dfi_p1_cas_n <= (~array_muxed12);
 	dfi_p1_ras_n <= (~array_muxed13);
 	dfi_p1_we_n <= (~array_muxed14);
-	dfi_p1_mw <= (~array_muxed15);
+	dfi_p1_mw <= array_muxed15;
 	steerer_rddata_en_dly1 <= array_muxed16;
 	steerer_wrdata_en_dly1 <= array_muxed17;
 	dfi_p1_rddata_en <= (array_muxed18 | steerer_rddata_en_dly1);
@@ -3289,7 +3390,7 @@ always @(posedge sys_clk) begin
 	dfi_p2_cas_n <= (~array_muxed22);
 	dfi_p2_ras_n <= (~array_muxed23);
 	dfi_p2_we_n <= (~array_muxed24);
-	dfi_p2_mw <= (~array_muxed25);
+	dfi_p2_mw <= array_muxed25;
 	steerer_rddata_en_dly2 <= array_muxed26;
 	steerer_wrdata_en_dly2 <= array_muxed27;
 	dfi_p2_rddata_en <= (array_muxed28 | steerer_rddata_en_dly2);
@@ -3300,7 +3401,7 @@ always @(posedge sys_clk) begin
 	dfi_p3_cas_n <= (~array_muxed32);
 	dfi_p3_ras_n <= (~array_muxed33);
 	dfi_p3_we_n <= (~array_muxed34);
-	dfi_p3_mw <= (~array_muxed35);
+	dfi_p3_mw <= array_muxed35;
 	steerer_rddata_en_dly3 <= array_muxed36;
 	steerer_wrdata_en_dly3 <= array_muxed37;
 	dfi_p3_rddata_en <= (array_muxed38 | steerer_rddata_en_dly3);

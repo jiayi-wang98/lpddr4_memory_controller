@@ -85,7 +85,7 @@ class _CommandChooser(Module):
             choices = Array(getattr(req, name) for req in requests)
             self.comb += getattr(cmd, name).eq(choices[arbiter.grant])
 
-        for name in ["cas", "ras", "we"]:
+        for name in ["cas", "ras", "we","is_mw"]:
             # we should only assert those signals when valid is 1
             choices = Array(getattr(req, name) for req in requests)
             self.comb += \
@@ -183,7 +183,7 @@ class _Steerer(Module):
                 phase.cas_n.eq(~Array(valid_and(cmd, "cas") for cmd in commands)[sel]),
                 phase.ras_n.eq(~Array(valid_and(cmd, "ras") for cmd in commands)[sel]),
                 phase.we_n.eq(~Array(valid_and(cmd, "we") for cmd in commands)[sel]),
-                phase.mw.eq(~Array(valid_and(cmd, "is_mw") for cmd in commands)[sel])
+                phase.mw.eq(Array(valid_and(cmd, "is_mw") for cmd in commands)[sel])
             ]
 
             rddata_ens = Array(valid_and(cmd, "is_read") for cmd in commands)
