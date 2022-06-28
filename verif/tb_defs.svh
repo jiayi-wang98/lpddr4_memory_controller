@@ -5,11 +5,13 @@ typedef enum bit [2:0] {BYTE, HALFWORD, WORD, WORDx2, WORDx4, WORDx8, WORDx16, W
 typedef enum bit [1:0] {OKAY, ERROR, RETRY, SPLIT} resp_t;
 
 typedef enum bit [3:0] {PRECHARGE,ACTIVATE,COL_READ, COL_WRITE, MASKED_WRITE,COL_READ_AP,COL_WRITE_AP,MASKED_WRITE_AP,REFRESH_ALL,ERROR_0,ERROR_1,PRECHARGE_ALL,RSU_1,RSU_2,RSU_3,RSU_4} ddr_cmd_t;
+string DDR_CMD[16]={"PRECHARGE","ACTIVATE","READ","WRITE","MASKED WRITE","READ_AP","WRITE_AP","MASKED_WRITE_AP","REFRESH_ALL","ERROR_0","ERROR_1","PRECHARGE_ALL","RSU_1","RSU_2","RSU_3","RSU_4"};
 
 parameter tRP=12;
 parameter tRP_db=1;
 parameter tRP_ns=21;
 parameter tRFC=97;
+parameter tRFC_ns=180;
 parameter tREFI_ns=3904; //32ms/8192row
 parameter tPP_sb=1;
 parameter tFAW_ns=30; //30 at 2133//40 at f<=1666
@@ -25,3 +27,25 @@ parameter tRRD_ns=10;
 parameter tRTW_sb=10; //RL(40-DBI EN)+RU(tDQSCK/tCK)(3.5ns/7.5)+BL/2(8)-WL(18)+tWPRE(0.4)+RD(tRPSR)(1.8)=40
 parameter tWTP_sb=17; //WL(18)+1+BL/2(8)+RT(tWR/tCK)(40)=67
 parameter tWTR_sb=13; //WL(18)+1+BL/2(8)+RT(tWTR/tCK)(10ns/22)=49
+
+typedef struct packed {
+    time t;
+    ddr_cmd_t cmd;
+    bit cas;
+    bit ras;
+    bit we;
+    bit mw;
+    bit[16:0] address;
+    bit[2:0] bank;
+  } cmd_t;
+
+typedef struct packed {
+    time t;
+    ddr_cmd_t cmd;
+    bit cas_n;
+    bit ras_n;
+    bit we_n;
+    bit mw;
+    bit[16:0] address;
+    bit[2:0] bank;
+  } dfi_cmd_t;

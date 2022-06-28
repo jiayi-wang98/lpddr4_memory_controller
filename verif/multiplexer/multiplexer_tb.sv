@@ -1,11 +1,9 @@
 `timescale 1ns/10ps
-//`include "multiplexer_pkg.svh"
-import uvm_pkg::*;
-`include "uvm_macros.svh"
-//`include "multiplexer_pkg.svh"
-//import multiplexer_pkg::*;
 
 module multiplexer_tb();
+    `include "uvm_macros.svh"
+    import uvm_pkg::*;
+
     logic clk,rst;
     dfi_interface dfi_if(clk,rst);
     cmd_rw_interface cmd_rw_if_0(clk,rst);
@@ -33,7 +31,7 @@ module multiplexer_tb();
 
     logic [7:0] ref_tRP_cfg=8'd12;
 	logic [7:0] ref_tRFC_cfg=8'd97;
-	logic [11:0] ref_tREFI_cfg=12'd2083;
+	logic [11:0] ref_tREFI_cfg=12'd1830;
 	logic [3:0] ref_POSTPONE_cfg=4'd8;
 
     multiplexer_b8 u_multiplexer_b8 (
@@ -120,7 +118,7 @@ module multiplexer_tb();
     .cmd_payload_is_cmd        (cmd_rw_if_refresher.cmd_payload_is_cmd),
     .cmd_payload_is_read       (cmd_rw_if_refresher.cmd_payload_is_read),
     .cmd_payload_is_write      (cmd_rw_if_refresher.cmd_payload_is_write),
-    .cmd_payload_is_mw         (),
+    .cmd_payload_is_mw         (1'b0),
     .refresh_req               (cmd_rw_if_0.refresh_req),
     .refresh_gnt               (cmd_rw_if_0.refresh_gnt),
     .cmd_valid_1               (cmd_rw_if_0.cmd_valid),

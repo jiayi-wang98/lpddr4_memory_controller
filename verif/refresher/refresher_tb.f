@@ -1,4 +1,5 @@
 +incdir+./
 +incdir+../rtl
++incdir+./refresher
 ../rtl/refresher_pos_8.v
-./refresher_tb.sv
+./refresher/refresher_tb.sv
