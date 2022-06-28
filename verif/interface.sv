@@ -183,14 +183,16 @@ interface cmd_rw_interface(input clk,rst);
 	logic cmd_payload_is_read;
 	logic cmd_payload_is_write;
 	logic cmd_payload_is_mw;
+	logic refresh_req;
+	logic refresh_gnt;
 	clocking drv_ck @(posedge clk);
         default input #0.1 output #0.1;
-        output cmd_valid,cmd_payload_a,cmd_payload_ba,cmd_payload_cas,cmd_payload_ras,cmd_payload_we,cmd_payload_is_cmd,cmd_payload_is_read,cmd_payload_is_write,cmd_payload_is_mw;
-        input cmd_ready;
+        output cmd_valid,cmd_payload_a,cmd_payload_ba,cmd_payload_cas,cmd_payload_ras,cmd_payload_we,cmd_payload_is_cmd,cmd_payload_is_read,cmd_payload_is_write,cmd_payload_is_mw,refresh_gnt;
+        input cmd_ready,refresh_req;
     endclocking
 	clocking mon_ck @(posedge clk);
         default input #0.1 output #0.1;
-        input cmd_valid,cmd_payload_a,cmd_payload_ba,cmd_payload_cas,cmd_payload_ras,cmd_payload_we,cmd_payload_is_cmd,cmd_payload_is_read,cmd_payload_is_write,cmd_payload_is_mw,cmd_ready;
+        input refresh_gnt,refresh_req,cmd_valid,cmd_payload_a,cmd_payload_ba,cmd_payload_cas,cmd_payload_ras,cmd_payload_we,cmd_payload_is_cmd,cmd_payload_is_read,cmd_payload_is_write,cmd_payload_is_mw,cmd_ready;
     endclocking
 endinterface
 

@@ -151,7 +151,7 @@ class BankMachine(Module):
         ]
         # tCCDMW (masked-write) controller -----------------------------------------------------
         self.submodules.tccdmwcon = tccdmwcon = tXXDController(self.tCCDMW)
-        self.comb += tccdmwcon.valid.eq(cmd.valid & cmd.ready & cmd.is_write & cmd.is_mw)
+        self.comb += tccdmwcon.valid.eq(cmd.valid & cmd.ready & cmd.is_write)
 
         # tWTP (write-to-precharge) controller -----------------------------------------------------
         """
@@ -194,20 +194,28 @@ class BankMachine(Module):
                 NextState("REFRESH")
             ).Elif(cmd_buffer.source.valid,
                 If(row_opened,
-                    If(row_hit & tccdmwcon.ready,
-                        cmd.valid.eq(1),
-                        If(cmd_buffer.source.we,
-                            If(cmd_buffer.source.mw,
+                    If(row_hit,
+                        If(cmd_buffer.source.we, #write/masked-write
+                            If(cmd_buffer.source.mw, #masked/write
+                                If(tccdmwcon.ready, #tCCDMW met
+                                cmd.valid.eq(1),
                                 cmd.is_mw.eq(1),
                                 req.wdata_ready.eq(cmd.ready),
                                 cmd.is_write.eq(1),
                                 cmd.we.eq(1),
-                                If(cmd.ready,NextState("MW"))
                                 ).Else(
-                                    req.wdata_ready.eq(cmd.ready),
-                                    cmd.is_write.eq(1),
-                                    cmd.we.eq(1))
-                        ).Else(
+                                    req.wdata_ready.eq(0)
+                                )
+                            ).Else( #write
+                                cmd.valid.eq(1),
+                                cmd.is_mw.eq(0),
+                                req.wdata_ready.eq(cmd.ready),
+                                cmd.is_write.eq(1),
+                                cmd.we.eq(1)
+                            )
+                        #read
+                        ).Else( 
+                            cmd.valid.eq(1),
                             req.rdata_valid.eq(cmd.ready),
                             cmd.is_read.eq(1)
                         ),
@@ -236,11 +244,6 @@ class BankMachine(Module):
                 cmd.is_cmd.eq(1)
             ),
             row_close.eq(1)
-        )
-        fsm.act("MW",
-            If(tccdmwcon.ready,
-                NextState("REGULAR")
-            )
         )
         fsm.act("AUTOPRECHARGE",
             If(twtpcon.ready & trascon.ready,

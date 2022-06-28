@@ -5,7 +5,7 @@ package multiplexer_pkg;
 
   // static variables shared by resources
   semaphore run_stop_flags = new();
-  string DDR_CMD[7]={"PRECHARGE","ACTIVATE","READ","WRITE","MASKED WRITE","REFRESH","ERROR"};
+  string DDR_CMD[16]={"PRECHARGE","ACTIVATE","READ","WRITE","MASKED WRITE","READ_AP","WRITE_AP","MASKED_WRITE_AP","REFRESH_ALL","ERROR_0","ERROR_1","PRECHARGE_ALL","RSU_1","RSU_2","RSU_3","RSU_4"};
 
   // bankmachine sequence item
   class bm_trans extends uvm_sequence_item;
@@ -14,7 +14,7 @@ package multiplexer_pkg;
     rand bit[16:0] row_address;
     rand bit[5:0] col_address[];
     rand bit we[];//read or write
-
+    rand bit with_autoprecharge;
     //bit[2:0] bank_address[];
     
     rand bit cas[];
@@ -99,6 +99,7 @@ package multiplexer_pkg;
     `uvm_object_utils_begin(bm_trans)
       `uvm_field_int(row_address, UVM_ALL_ON)
       `uvm_field_int(bank_address, UVM_ALL_ON)
+      `uvm_field_int(with_autoprecharge, UVM_ALL_ON)
       `uvm_field_array_int(col_address, UVM_ALL_ON)
       `uvm_field_array_int(cas, UVM_ALL_ON)
       `uvm_field_array_int(ras, UVM_ALL_ON)
@@ -133,6 +134,7 @@ package multiplexer_pkg;
     rand bit[16:0] row_address;
     rand bit[5:0] col_address[];
     rand bit we[];//read or write
+    rand bit with_autoprecharge;
 
     //bit[2:0] bank_address[];
     
@@ -236,6 +238,7 @@ package multiplexer_pkg;
       `uvm_field_int(row_address, UVM_ALL_ON)
       `uvm_field_int(cmd_size, UVM_ALL_ON)
       `uvm_field_int(bank_address, UVM_ALL_ON)
+      `uvm_field_int(with_autoprecharge, UVM_ALL_ON)
       `uvm_field_array_int(col_address, UVM_ALL_ON)
       `uvm_field_array_int(cas, UVM_ALL_ON)
       `uvm_field_array_int(ras, UVM_ALL_ON)
@@ -257,7 +260,8 @@ package multiplexer_pkg;
 
     task send_trans();
       bm_trans req, rsp;
-      `uvm_do_with(req, {local::bank_address >= 0 -> bank_address == local::bank_address; 
+      `uvm_do_with(req, {local::with_autoprecharge >= 0 -> with_autoprecharge == local::with_autoprecharge;
+                         local::bank_address >= 0 -> bank_address == local::bank_address; 
                          local::row_address >=0  -> row_address == local::row_address;
                          local::cmd_size >0 -> col_address.size() == local::cmd_size; 
                          foreach(local::col_address[j]) local::col_address[j] >= 0 -> col_address[j] == local::col_address[j];
@@ -290,12 +294,13 @@ package multiplexer_pkg;
       s = {s, "bm_cmd_sequence object content is as below: \n"};
       s = {s, super.sprint()};
       s = {s, "=======================================\n"};
-      `uvm_info(get_type_name(), s, UVM_HIGH)
+      //`uvm_info(get_type_name(), s, UVM_HIGH)
     endfunction
   endclass: bm_cmd_sequence
 
   // Bankmachine driver
   class bm_driver extends uvm_driver #(bm_trans);
+    bit precharged=0;
     virtual cmd_rw_interface intf;
     //bit[2:0] bank_address;
     mailbox #(bm_trans) req_mb;
@@ -352,29 +357,46 @@ package multiplexer_pkg;
         rsp.rsp = 1;
         rsp.set_sequence_id(req.get_sequence_id());
         seq_item_port.item_done(rsp);
+        precharged=req.with_autoprecharge;
       end
     endtask
   
     task bm_write(input bm_trans t);
+      bit begin_with_refresh=0;
+      @(negedge intf.clk);
+      if(intf.mon_ck.refresh_req) begin
+        @(posedge intf.clk);
+        intf.drv_ck.refresh_gnt<=1'b1;
+        `uvm_info("REFRESH IN", $sformatf("Bank %h into REFRESH",t.bank_address), UVM_HIGH)
+        @(negedge intf.clk);
+        wait(intf.mon_ck.refresh_req===1'b0);
+        intf.drv_ck.refresh_gnt<=1'b0;
+        `uvm_info("REFRESH OUT", $sformatf("Bank %h out of REFRESH",t.bank_address), UVM_HIGH)
+        begin_with_refresh=1;
+      end
+
       for(int i=0;i<t.cas.size;i++) begin
         //drive precharge
         if(i==0) begin
-          @(posedge intf.clk);
-          intf.drv_ck.cmd_valid <= 1'b1;
-          intf.drv_ck.cmd_payload_a<= 0;
-	        intf.drv_ck.cmd_payload_ba<= t.bank_address;
-	        intf.drv_ck.cmd_payload_cas<= t.cas[i];
-	        intf.drv_ck.cmd_payload_ras<= t.ras[i];
-	        intf.drv_ck.cmd_payload_we<= t.we[i];
-          intf.drv_ck.cmd_payload_is_cmd<= t.is_cmd[i];
-	        intf.drv_ck.cmd_payload_is_read<= t.is_read[i];
-	        intf.drv_ck.cmd_payload_is_write<= t.is_write[i];
-	        intf.drv_ck.cmd_payload_is_mw<= t.is_mw[i];
-          @(negedge intf.clk);
-          wait(intf.mon_ck.cmd_ready === 'b1);
-          `uvm_info(get_type_name(), $sformatf("Bank %h sent command PRECHARGE",t.bank_address), UVM_HIGH)
-          //tRP
-          repeat(12) bm_idle();
+
+          if((precharged==0)||(begin_with_refresh==1)) begin
+            @(posedge intf.clk);
+            intf.drv_ck.cmd_valid <= 1'b1;
+            intf.drv_ck.cmd_payload_a<= 0;
+	          intf.drv_ck.cmd_payload_ba<= t.bank_address;
+	          intf.drv_ck.cmd_payload_cas<= t.cas[i];
+	          intf.drv_ck.cmd_payload_ras<= t.ras[i];
+	          intf.drv_ck.cmd_payload_we<= t.we[i];
+            intf.drv_ck.cmd_payload_is_cmd<= t.is_cmd[i];
+	          intf.drv_ck.cmd_payload_is_read<= t.is_read[i];
+	          intf.drv_ck.cmd_payload_is_write<= t.is_write[i];
+	          intf.drv_ck.cmd_payload_is_mw<= t.is_mw[i];
+            @(negedge intf.clk);
+            wait(intf.mon_ck.cmd_ready === 'b1);
+            `uvm_info(get_type_name(), $sformatf("Bank %h sent command PRECHARGE",t.bank_address), UVM_HIGH)
+            //tRP
+            repeat(tRP) bm_idle();
+          end
         end
         else if (i==1) begin
           @(posedge intf.clk);
@@ -392,9 +414,13 @@ package multiplexer_pkg;
           wait(intf.mon_ck.cmd_ready === 'b1);
           `uvm_info(get_type_name(), $sformatf("Bank %h sent command ACTIVATE row 0x%0h",t.bank_address,t.row_address), UVM_HIGH)
           //tRCD
-          repeat(11) bm_idle();
+          repeat(tRCD) bm_idle();
         end
-        else begin
+        else if(i<t.cas.size-1) begin
+          //masked write
+          if(t.is_mw[i]==1) begin
+            repeat(tCCDMW-2) bm_idle();
+          end
           @(posedge intf.clk);
           intf.drv_ck.cmd_valid <= 1'b1;
           intf.drv_ck.cmd_payload_a<= {7'd0,t.col_address[i-2],4'd0};
@@ -409,15 +435,71 @@ package multiplexer_pkg;
           @(negedge intf.clk);
           wait(intf.mon_ck.cmd_ready === 'b1);
           if(t.we[i]==1)
-            `uvm_info(get_type_name(), $sformatf("Bank %h sent command WRITE col 0x%0h",t.bank_address,t.col_address[i-2]), UVM_HIGH)
+            `uvm_info(get_type_name(), $sformatf("Bank %h sent command WRITE/MASKED_WRITE col 0x%0h0",t.bank_address,t.col_address[i-2]), UVM_HIGH)
           else
-            `uvm_info(get_type_name(), $sformatf("Bank %h sent command READ col 0x%0hS",t.bank_address,t.col_address[i-2]), UVM_HIGH)
+            `uvm_info(get_type_name(), $sformatf("Bank %h sent command READ col 0x%0h0",t.bank_address,t.col_address[i-2]), UVM_HIGH)
           //tCCD
-          repeat(2) bm_idle();
+          repeat(tCCD) bm_idle();
+
+        //last cmd, check if it with auto precharge
+        end else begin    
+          if(t.is_mw[i]==1) begin
+            repeat(tCCDMW-2) bm_idle();
+          end
+
+          if(t.with_autoprecharge) begin
+            @(posedge intf.clk);
+            intf.drv_ck.cmd_valid <= 1'b1;
+            intf.drv_ck.cmd_payload_a<= {6'd0,1'b1,t.col_address[i-2],4'd0};
+	          intf.drv_ck.cmd_payload_ba<= t.bank_address;
+	          intf.drv_ck.cmd_payload_cas<= t.cas[i];
+	          intf.drv_ck.cmd_payload_ras<= t.ras[i];
+	          intf.drv_ck.cmd_payload_we<= t.we[i];
+            intf.drv_ck.cmd_payload_is_cmd<= t.is_cmd[i];
+	          intf.drv_ck.cmd_payload_is_read<= t.is_read[i];
+	          intf.drv_ck.cmd_payload_is_write<= t.is_write[i];
+	          intf.drv_ck.cmd_payload_is_mw<= t.is_mw[i];
+            @(negedge intf.clk);
+            wait(intf.mon_ck.cmd_ready === 'b1);
+            if(t.we[i]==1)
+              `uvm_info(get_type_name(), $sformatf("Bank %h sent command WRITE_AP/MASKED_WRITE_AP col 0x%0h",t.bank_address,t.col_address[i-2]), UVM_HIGH)
+            else
+              `uvm_info(get_type_name(), $sformatf("Bank %h sent command READ_AP col 0x%0h0",t.bank_address,t.col_address[i-2]), UVM_HIGH)
+            //tCCD
+            repeat(tCCD) bm_idle();
+            if(t.we[i]==1)
+              repeat(tWTP_sb+tRP) bm_idle();
+            else 
+              repeat(tRTP_sb+tRP) bm_idle();
+          end else begin
+            @(posedge intf.clk);
+            intf.drv_ck.cmd_valid <= 1'b1;
+            intf.drv_ck.cmd_payload_a<= {7'd0,t.col_address[i-2],4'd0};
+	          intf.drv_ck.cmd_payload_ba<= t.bank_address;
+	          intf.drv_ck.cmd_payload_cas<= t.cas[i];
+	          intf.drv_ck.cmd_payload_ras<= t.ras[i];
+	          intf.drv_ck.cmd_payload_we<= t.we[i];
+            intf.drv_ck.cmd_payload_is_cmd<= t.is_cmd[i];
+	          intf.drv_ck.cmd_payload_is_read<= t.is_read[i];
+	          intf.drv_ck.cmd_payload_is_write<= t.is_write[i];
+	          intf.drv_ck.cmd_payload_is_mw<= t.is_mw[i];
+            @(negedge intf.clk);
+            wait(intf.mon_ck.cmd_ready === 'b1);
+            if(t.we[i]==1)
+              `uvm_info(get_type_name(), $sformatf("Bank %h sent command WRITE/MASKED_WRITE col 0x%0h0",t.bank_address,t.col_address[i-2]), UVM_HIGH)
+            else
+              `uvm_info(get_type_name(), $sformatf("Bank %h sent command READ col 0x%0h0",t.bank_address,t.col_address[i-2]), UVM_HIGH)
+            //tCCD
+            repeat(tCCD) bm_idle();
+            if(t.we[i]==1)
+              repeat(tWTP_sb) bm_idle();
+            else 
+              repeat(tRTP_sb) bm_idle();
+          end
         end
       end
-      //tCCD
-      repeat(2) bm_idle();
+      //tWTP
+      precharged=t.with_autoprecharge;
     endtask
     
     task bm_idle();
@@ -436,6 +518,7 @@ package multiplexer_pkg;
   endclass: bm_driver
 
   typedef struct packed {
+    time t;
     ddr_cmd_t cmd;
     bit cas;
     bit ras;
@@ -449,6 +532,7 @@ package multiplexer_pkg;
   class bm_monitor extends uvm_monitor;
     virtual cmd_rw_interface intf;
     uvm_analysis_port #(cmd_t) mon_cmd_port;
+    cmd_t m_last;
 
     `uvm_component_utils(bm_monitor)
 
@@ -468,8 +552,223 @@ package multiplexer_pkg;
       this.mon_trans();
     endtask
 
+
+    task check_cycle(int cycle_interval,int cycle_cst,string cmd_a,string cmd_b,string timing_name);
+      if(cycle_interval<cycle_cst) begin
+        `uvm_error($sformatf("%s VIOLATION",timing_name), $sformatf("[SB]Time interval between %s and %s is %0d nCK < %s= %0d nCK.",cmd_b,cmd_a,cycle_interval, timing_name,cycle_cst))
+      end else begin
+        `uvm_info($sformatf("%s MET",timing_name), $sformatf("[SB]Time interval between %s and %s is %0d nCK >= %s= %0d nCK.",cmd_b,cmd_a,cycle_interval, timing_name,cycle_cst),UVM_HIGH)
+      end
+    endtask
+
+    task check_timing(time t_diff,time t_cst,string cmd_a,string cmd_b,string timing_name);
+      if(t_diff<t_cst) begin
+        `uvm_error($sformatf("%s VIOLATION",timing_name), $sformatf("[SB]Time interval between %s and %s is %0d ns < %s= %0d ns.",cmd_b,cmd_a,t_diff, timing_name,t_cst))
+      end else begin
+        `uvm_info($sformatf("%s MET",timing_name), $sformatf("[SB]Time interval between %s and %s is %0d ns >= %s= %0d ns.",cmd_b,cmd_a,t_diff, timing_name,t_cst),UVM_HIGH)
+      end
+    endtask
+
+    task check_bm_timing(cmd_t m,cmd_t m_last);
+      int cycle_interval;
+      int t_diff;
+      t_diff=m.t-m_last.t;//t ns
+      cycle_interval=(m.t-m_last.t)/2; // system clock cycle
+      case(m_last.cmd) 
+          COL_READ_AP: begin
+            case(m.cmd)
+              ACTIVATE: begin
+                this.check_cycle(cycle_interval,(tRTP_sb+tRP),DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tRTP_sb+tRP");
+              end
+              PRECHARGE: begin
+                this.check_cycle(cycle_interval,tPP_sb,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tPP_sb");
+              end
+              default:begin
+                `uvm_error("COMMAND VIOLATION", $sformatf("[SB]CMD VIOLATION BETWEEN %s and %s",DDR_CMD[m_last.cmd],DDR_CMD[m.cmd]))
+              end
+            endcase
+          end
+
+          COL_WRITE_AP: begin
+            case(m.cmd)
+              ACTIVATE: begin
+                this.check_cycle(cycle_interval,(tWTP_sb+tRP),DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tWTP_sb+tRP");
+              end
+              PRECHARGE: begin
+                this.check_cycle(cycle_interval,tPP_sb,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tPP_sb");
+              end
+              default:begin
+                `uvm_error("COMMAND VIOLATION", $sformatf("[SB]CMD VIOLATION BETWEEN %s and %s",DDR_CMD[m_last.cmd],DDR_CMD[m.cmd]))
+              end
+            endcase
+          end
+
+          MASKED_WRITE_AP: begin
+            case(m.cmd)
+              ACTIVATE: begin
+                this.check_cycle(cycle_interval,(tWTP_sb+tRP),DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tWTP_sb+tRP");
+              end
+              PRECHARGE: begin
+                this.check_cycle(cycle_interval,tPP_sb,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tPP_sb");
+              end
+              default:begin
+                `uvm_error("COMMAND VIOLATION", $sformatf("[SB]CMD VIOLATION BETWEEN %s and %s",DDR_CMD[m_last.cmd],DDR_CMD[m.cmd]))
+              end
+            endcase
+          end
+
+          PRECHARGE: begin
+            case(m.cmd)
+              ACTIVATE: begin
+                this.check_timing(t_diff,tRP_ns,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tRP_ns");
+              end
+              PRECHARGE: begin
+                this.check_cycle(cycle_interval,tPP_sb,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tPP_sb");
+              end
+              default:begin
+                `uvm_error("COMMAND VIOLATION", $sformatf("[SB]CMD VIOLATION BETWEEN %s and %s",DDR_CMD[m_last.cmd],DDR_CMD[m.cmd]))
+              end
+            endcase
+          end
+          ACTIVATE: begin
+            case(m.cmd)
+              COL_READ: begin
+                this.check_timing(t_diff,tRCD_ns,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tRCD_ns");
+              end
+              COL_READ_AP: begin
+                this.check_timing(t_diff,tRCD_ns,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tRCD_ns");
+              end
+              COL_WRITE: begin
+                this.check_timing(t_diff,tRCD_ns,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tRCD_ns");
+              end
+              COL_WRITE_AP: begin
+                this.check_timing(t_diff,tRCD_ns,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tRCD_ns");
+              end
+              MASKED_WRITE_AP: begin
+                this.check_timing(t_diff,tRCD_ns,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tRCD_ns");
+              end
+              MASKED_WRITE: begin
+                this.check_timing(t_diff,tRCD_ns,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tRCD_ns");
+              end
+              PRECHARGE: begin
+                this.check_timing(t_diff,tRAS_ns,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tRAS_ns");
+              end
+              default:begin
+                `uvm_error("COMMAND VIOLATION", $sformatf("[SB]CMD VIOLATION BETWEEN %s and %s",DDR_CMD[m_last.cmd],DDR_CMD[m.cmd]))
+              end
+            endcase
+            
+          end
+          COL_READ: begin
+            case(m.cmd)
+              PRECHARGE: begin
+                this.check_timing(t_diff,tRTP_ns,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tRTP_ns");
+              end
+              ACTIVATE:begin
+                `uvm_error("COMMAND VIOLATION", $sformatf("[SB]CMD VIOLATION BETWEEN %s and %s",DDR_CMD[m_last.cmd],DDR_CMD[m.cmd]))
+              end
+              COL_READ: begin
+                this.check_cycle(cycle_interval,tCCD,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tCCD");
+              end
+              COL_READ_AP: begin
+                this.check_cycle(cycle_interval,tCCD,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tCCD");
+              end
+              COL_WRITE: begin
+                //comment out when checking bankmachine
+                //this.check_cycle(cycle_interval,tRTW_sb,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tRTW_sb");
+              end
+              COL_WRITE_AP: begin
+                //comment out when checking bankmachine
+                //this.check_cycle(cycle_interval,tRTW_sb,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tRTW_sb");
+              end
+              MASKED_WRITE: begin
+                //comment out when checking bankmachine
+                //this.check_cycle(cycle_interval,tRTW_sb,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tRTW_sb");
+              end
+              MASKED_WRITE_AP: begin
+                //comment out when checking bankmachine
+                //this.check_cycle(cycle_interval,tRTW_sb,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tRTW_sb");
+              end
+              default:begin
+                `uvm_error("COMMAND VIOLATION", $sformatf("[SB]CMD VIOLATION BETWEEN %s and %s",DDR_CMD[m_last.cmd],DDR_CMD[m.cmd]))
+              end
+            endcase
+          end
+          COL_WRITE: begin
+            case(m.cmd)
+              PRECHARGE: begin
+                this.check_cycle(cycle_interval,tWTP_sb,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tWTP_sb");
+              end
+              ACTIVATE:begin
+                `uvm_error("COMMAND VIOLATION", $sformatf("[SB]CMD VIOLATION BETWEEN %s and %s",DDR_CMD[m_last.cmd],DDR_CMD[m.cmd]))
+              end
+              COL_READ: begin
+                //comment out when checking bankmachine
+                //this.check_cycle(cycle_interval,tWTR_sb,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tWTR_sb");
+              end
+              COL_READ_AP: begin
+                //comment out when checking bankmachine
+                //this.check_cycle(cycle_interval,tWTR_sb,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tWTR_sb");
+              end
+              COL_WRITE: begin
+                this.check_cycle(cycle_interval,tCCD,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tCCD");
+              end
+              COL_WRITE_AP: begin
+                this.check_cycle(cycle_interval,tCCD,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tCCD");
+              end
+              MASKED_WRITE: begin
+                this.check_cycle(cycle_interval,tCCDMW,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tCCDMW");
+              end
+              MASKED_WRITE_AP: begin
+                this.check_cycle(cycle_interval,tCCDMW,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tCCDMW");
+              end
+              default:begin
+                `uvm_error("COMMAND VIOLATION", $sformatf("[SB]CMD VIOLATION BETWEEN %s and %s",DDR_CMD[m_last.cmd],DDR_CMD[m.cmd]))
+              end
+            endcase
+          end
+          MASKED_WRITE: begin
+            case(m.cmd)
+              PRECHARGE: begin
+                this.check_cycle(cycle_interval,tWTP_sb,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tWTP_sb");
+              end
+              ACTIVATE:begin
+                `uvm_error("COMMAND VIOLATION", $sformatf("[SB]CMD VIOLATION BETWEEN %s and %s",DDR_CMD[m_last.cmd],DDR_CMD[m.cmd]))
+              end
+              COL_READ: begin
+                //comment out when checking bankmachine
+                //this.check_cycle(cycle_interval,tWTR_sb,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tWTR_sb");
+              end
+              COL_READ_AP: begin
+                //comment out when checking bankmachine
+                //this.check_cycle(cycle_interval,tWTR_sb,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tWTR_sb");
+              end
+              COL_WRITE: begin
+                this.check_cycle(cycle_interval,tCCD,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tCCD");
+              end
+              COL_WRITE_AP: begin
+                this.check_cycle(cycle_interval,tCCD,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tCCD");
+              end
+              MASKED_WRITE: begin
+                this.check_cycle(cycle_interval,tCCDMW,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tCCDMW");
+              end
+              MASKED_WRITE_AP: begin
+                this.check_cycle(cycle_interval,tCCDMW,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tCCDMW");
+              end
+              default:begin
+                `uvm_error("COMMAND VIOLATION", $sformatf("[SB]CMD VIOLATION BETWEEN %s and %s",DDR_CMD[m_last.cmd],DDR_CMD[m.cmd]))
+              end
+            endcase
+          end
+          default:begin
+          end
+      endcase
+    endtask
+
     task mon_trans();
       cmd_t m;
+      m_last.cmd=ERROR_1;
+
       forever begin
         @(posedge intf.clk iff (intf.mon_ck.cmd_valid==='b1 && intf.mon_ck.cmd_ready==='b1));
         m.cas = intf.mon_ck.cmd_payload_cas;
@@ -479,19 +778,118 @@ package multiplexer_pkg;
         case({intf.mon_ck.cmd_payload_ras,intf.mon_ck.cmd_payload_cas,intf.mon_ck.cmd_payload_we,intf.mon_ck.cmd_payload_is_mw})
           4'b1010: m.cmd=PRECHARGE;
           4'b1000: m.cmd=ACTIVATE;
-          4'b0100: m.cmd=COL_READ;
-          4'b0110: m.cmd=COL_WRITE;
-          4'b0111: m.cmd=MASKED_WRITE;
+          4'b0100: begin
+            m.cmd=COL_READ;
+            if(intf.mon_ck.cmd_payload_a[10]==1'b1) m.cmd=COL_READ_AP;
+          end
+          4'b0110: begin
+            m.cmd=COL_WRITE;
+            if(intf.mon_ck.cmd_payload_a[10]==1'b1) m.cmd=COL_WRITE_AP;
+          end
+          4'b0111: begin
+            m.cmd=MASKED_WRITE;
+            if(intf.mon_ck.cmd_payload_a[10]==1'b1) m.cmd=MASKED_WRITE_AP;
+          end
           default: m.cmd=ERROR_0;
         endcase
         m.address = intf.mon_ck.cmd_payload_a;
         m.bank=intf.mon_ck.cmd_payload_ba;
+        m.t=$time;
         mon_cmd_port.write(m);
-        `uvm_info(get_type_name(), $sformatf("Monitored BM cmd %s at bank %h, address %h", DDR_CMD[m.cmd],m.bank,m.address), UVM_HIGH)
+        `uvm_info(get_type_name(), $sformatf("Time %0t Monitored BM cmd %s at bank %h, address %h", m.t ,DDR_CMD[m.cmd],m.bank,m.address), UVM_HIGH)
+
+        //check timing
+        this.check_bm_timing(m,m_last);
+        m_last=m;
       end
     endtask
   endclass: bm_monitor
   
+  class refresher_monitor extends uvm_monitor;
+    virtual cmd_rw_interface intf;
+    uvm_analysis_port #(cmd_t) mon_cmd_port;
+    cmd_t m_last;
+
+    `uvm_component_utils(refresher_monitor)
+
+    function new(string name="refresher_monitor", uvm_component parent);
+      super.new(name, parent);
+      mon_cmd_port = new("mon_cmd_port", this);
+    endfunction
+
+    function void set_interface(virtual cmd_rw_interface intf);
+      if(intf == null)
+        `uvm_error("GETVIF", "interface handle is NULL, please check if target interface has been intantiated")
+      else
+        this.intf = intf;
+    endfunction
+
+    task run_phase(uvm_phase phase);
+      this.mon_trans();
+    endtask
+
+    /*
+    task check_cycle(int cycle_interval,int cycle_cst,string cmd_a,string cmd_b,string timing_name);
+      if(cycle_interval<cycle_cst) begin
+        `uvm_error($sformatf("%s VIOLATION",timing_name), $sformatf("[SB]Time interval between %s and %s is %0d nCK < %s= %0d nCK.",cmd_b,cmd_a,cycle_interval, timing_name,cycle_cst))
+      end else begin
+        `uvm_info($sformatf("%s MET",timing_name), $sformatf("[SB]Time interval between %s and %s is %0d nCK >= %s= %0d nCK.",cmd_b,cmd_a,cycle_interval, timing_name,cycle_cst),UVM_HIGH)
+      end
+    endtask
+
+    task check_timing(time t_diff,time t_cst,string cmd_a,string cmd_b,string timing_name);
+      if(t_diff<t_cst) begin
+        `uvm_error($sformatf("%s VIOLATION",timing_name), $sformatf("[SB]Time interval between %s and %s is %0d ns < %s= %0d ns.",cmd_b,cmd_a,t_diff, timing_name,t_cst))
+      end else begin
+        `uvm_info($sformatf("%s MET",timing_name), $sformatf("[SB]Time interval between %s and %s is %0d ns >= %s= %0d ns.",cmd_b,cmd_a,t_diff, timing_name,t_cst),UVM_HIGH)
+      end
+    endtask
+
+    task check_bm_timing(cmd_t m,cmd_t m_last);
+      int cycle_interval;
+      int t_diff;
+      t_diff=m.t-m_last.t;//t ns
+      cycle_interval=(m.t-m_last.t)/2; // system clock cycle
+      case(m_last.cmd) 
+          COL_READ_AP: begin
+            case(m.cmd)
+              ACTIVATE: begin
+                this.check_cycle(cycle_interval,(tRTP_sb+tRP),DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tRTP_sb+tRP");
+              end
+              PRECHARGE: begin
+                this.check_cycle(cycle_interval,tPP_sb,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tPP_sb");
+              end
+              default:begin
+                `uvm_error("COMMAND VIOLATION", $sformatf("[SB]CMD VIOLATION BETWEEN %s and %s",DDR_CMD[m_last.cmd],DDR_CMD[m.cmd]))
+              end
+            endcase
+          end
+          default:begin
+          end
+      endcase
+    endtask
+    */
+    task mon_trans();
+      cmd_t m;
+      m_last.cmd=ERROR_1;
+      forever begin
+        @(posedge intf.clk iff (intf.mon_ck.cmd_valid===1'b1 && intf.mon_ck.cmd_ready===1'b1 &&intf.mon_ck.cmd_payload_ras==1'b1));
+        case({intf.mon_ck.cmd_payload_ras,intf.mon_ck.cmd_payload_cas,intf.mon_ck.cmd_payload_we})
+          3'b101: m.cmd=PRECHARGE_ALL;
+          3'b110: m.cmd=REFRESH_ALL;
+          default: m.cmd=ERROR_0;
+        endcase
+        m.address=intf.mon_ck.cmd_payload_a;
+        m.t=$time;
+        mon_cmd_port.write(m);
+        `uvm_info(get_type_name(), $sformatf("Time %0t Monitored BM cmd %s at address %h", m.t ,DDR_CMD[m.cmd],m.address), UVM_HIGH)
+        //check timing
+        //this.check_bm_timing(m,m_last);
+        m_last=m;
+      end
+    endtask
+  endclass: refresher_monitor
+
   // bankmachine agent
   class bm_agent extends uvm_agent;
     bm_driver driver;
@@ -525,6 +923,7 @@ package multiplexer_pkg;
   endclass: bm_agent
   
   typedef struct packed {
+    time t;
     ddr_cmd_t cmd;
     bit cas_n;
     bit ras_n;
@@ -537,6 +936,10 @@ package multiplexer_pkg;
   class dfi_monitor extends uvm_monitor;
     virtual dfi_interface intf;
     uvm_analysis_port #(dfi_cmd_t) mon_dfi_port;
+    dfi_cmd_t m;
+    dfi_cmd_t m_last;
+    time last_activate_cmd=0;
+    time last_activate_cmd_pb[8]={0,0,0,0,0,0,0,0};
 
     `uvm_component_utils(dfi_monitor)
 
@@ -559,12 +962,365 @@ package multiplexer_pkg;
       else
         this.intf = intf;
     endfunction
+    //update cmd and check DFI timing
+    task update_cmd(dfi_cmd_t m0,dfi_cmd_t m1,dfi_cmd_t m2,dfi_cmd_t m3);
+      int valid_num=0;
+      if(m0.cmd!=ERROR_0) begin
+        m.cmd=m0.cmd;
+        m.t=m0.t;
+        m.bank=m0.bank;
+        m.address=m0.address;
+        valid_num+=1;
+      end else if(m1.cmd!=ERROR_0) begin
+        m.cmd=m1.cmd;
+        m.t=m1.t;
+        m.bank=m1.bank;
+        m.address=m1.address;
+        valid_num+=1;
+      end else if(m2.cmd!=ERROR_0) begin
+        m.cmd=m2.cmd;
+        m.t=m2.t;
+        m.bank=m2.bank;
+        m.address=m2.address;
+        valid_num+=1;
+      end else if(m3.cmd!=ERROR_0) begin
+        m.cmd=m3.cmd;
+        m.t=m3.t;
+        m.bank=m3.bank;
+        m.address=m3.address;
+        valid_num+=1;
+      end
+
+      if(valid_num==1) begin
+        this.check_dfi_timing(m,m_last);
+        m_last=m;
+      end else if(valid_num>1) begin
+        `uvm_error("DFI COMMAND OVERLAP", "DFI COMMAND OVERLAP DETECTED")
+      end
+    endtask
+
+    task check_tRRD(time t,time t_last);
+      int t_diff;
+      t_diff=t-t_last;
+      if(t_diff<tRRD_ns) begin
+        `uvm_error("tRRD VIOLATION", $sformatf("[DB]Time interval between ACTIVATE and ACTIVATE is %0d ns < tRRD= %0d ns.", t_diff, tRRD_ns))
+      end else begin
+        `uvm_info("tRRD MET", $sformatf("[DB]Time interval between ACTIVATE and ACTIVATE is %0d ns >= tRRD= %0d ns.",t_diff, tRRD_ns),UVM_HIGH)
+      end
+    endtask
+
+    task check_tFAW();
+      int i=0;
+      int j=0;
+      int t_diff;
+      time sorted_time[8];
+      time temp;
+      for(i=0;i<8;i++) begin
+        sorted_time[i]=last_activate_cmd_pb[i];
+      end
+      for(i=8;i>1;i--) begin
+        for(j=0;j<i;j++) begin
+          if(sorted_time[j]<sorted_time[j+1]) begin
+            temp=sorted_time[j+1];
+            sorted_time[j+1]=sorted_time[j];
+            sorted_time[j]=temp;
+          end
+        end
+      end
+
+      if(sorted_time[4]!=0) begin
+        t_diff=sorted_time[0]-sorted_time[4];
+        if(t_diff<tFAW_ns) begin
+          `uvm_error("tFAW VIOLATION", $sformatf("[FAW]Current Four Activate Bank window is %0d ns < tFAW= %0d ns.", t_diff, tFAW_ns))
+        end else begin
+          `uvm_info("tFAW MET", $sformatf("[FAW]Current Four Activate Bank window is %0d ns >= tFAW= %0d ns.",t_diff, tFAW_ns),UVM_HIGH)
+        end
+      end
+    endtask
+
+    task check_tRC(time t,time t_last);
+      int t_diff;
+      t_diff=t-t_last;
+      if(t_diff<tRC_ns) begin
+        `uvm_error("tRC VIOLATION", $sformatf("[SB]Time interval ACTIVATE and ACTIVATE is %0d ns < tRC= %0d ns.", t_diff, tRC_ns))
+      end else begin
+        `uvm_info("tRC MET", $sformatf("[SB]Time interval between ACTIVATE and ACTIVATE is %0d ns >= tRC= %0d ns.",t_diff, tRC_ns),UVM_HIGH)
+      end
+    endtask
+
+    task check_cycle(int cycle_interval,int cycle_cst,string cmd_a,string cmd_b,string timing_name);
+      if(cycle_interval<cycle_cst) begin
+        `uvm_error($sformatf("DFI %s VIOLATION",timing_name), $sformatf("[DFI]Time interval between %s and %s is %0d nCK < %s= %0d nCK.",cmd_b,cmd_a,cycle_interval, timing_name,cycle_cst))
+      end else begin
+        `uvm_info($sformatf("DFI %s MET",timing_name), $sformatf("[DFI]Time interval between %s and %s is %0d nCK >= %s= %0d nCK.",cmd_b,cmd_a,cycle_interval, timing_name,cycle_cst),UVM_HIGH)
+      end
+    endtask
+
+    task check_timing(time t_diff,time t_cst,string cmd_a,string cmd_b,string timing_name);
+      if(t_diff<t_cst) begin
+        `uvm_error($sformatf("DFI %s VIOLATION",timing_name), $sformatf("[DFI]Time interval between %s and %s is %0d ns < %s= %0d ns.",cmd_b,cmd_a,t_diff, timing_name,t_cst))
+      end else begin
+        `uvm_info($sformatf("DFI %s MET",timing_name), $sformatf("[DFI]Time interval between %s and %s is %0d ns >= %s= %0d ns.",cmd_b,cmd_a,t_diff, timing_name,t_cst),UVM_HIGH)
+      end
+    endtask
+
+    task check_dfi_timing(dfi_cmd_t m,dfi_cmd_t m_last);
+      int cycle_interval;
+      int t_diff;
+      bit same_bank;
+      same_bank=(m.bank==m_last.bank);
+      t_diff=m.t-m_last.t;//t ns
+      cycle_interval=(m.t-m_last.t)/2; // system clock cycle
+      case(m_last.cmd) 
+          COL_READ_AP: begin
+            case(m.cmd)
+              ACTIVATE: begin
+                this.check_tRRD(m.t,last_activate_cmd);
+                this.check_tRC(m.t,last_activate_cmd_pb[m.bank]);
+                last_activate_cmd=m.t;
+                last_activate_cmd_pb[m.bank]=m.t;
+                this.check_tFAW();
+                if(same_bank) this.check_cycle(cycle_interval,(tRP+tRTP_sb),DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tRP+tRTP_sb");
+              end
+              PRECHARGE: begin
+                if (same_bank) this.check_cycle(cycle_interval,tPP_sb,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tPP_sb");
+              end
+              default:begin
+                if(same_bank) `uvm_error("COMMAND VIOLATION", $sformatf("[DFI-SB]CMD VIOLATION BETWEEN %s and %s",DDR_CMD[m_last.cmd],DDR_CMD[m.cmd]))
+              end
+            endcase
+          end
+
+          COL_WRITE_AP: begin
+            case(m.cmd)
+              ACTIVATE: begin
+                this.check_tRRD(m.t,last_activate_cmd);
+                this.check_tRC(m.t,last_activate_cmd_pb[m.bank]);
+                last_activate_cmd=m.t;
+                last_activate_cmd_pb[m.bank]=m.t;
+                this.check_tFAW();
+                if(same_bank) this.check_cycle(cycle_interval,(tRP+tWTP_sb),DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tRP+tWTP_sb");
+              end
+              PRECHARGE: begin
+                if (same_bank) this.check_cycle(cycle_interval,tPP_sb,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tPP_sb");
+              end
+              default:begin
+                if(same_bank) `uvm_error("COMMAND VIOLATION", $sformatf("[DFI-SB]CMD VIOLATION BETWEEN %s and %s",DDR_CMD[m_last.cmd],DDR_CMD[m.cmd]))
+              end
+            endcase
+          end
+
+          MASKED_WRITE_AP: begin
+            case(m.cmd)
+              ACTIVATE: begin
+                this.check_tRRD(m.t,last_activate_cmd);
+                this.check_tRC(m.t,last_activate_cmd_pb[m.bank]);
+                last_activate_cmd=m.t;
+                last_activate_cmd_pb[m.bank]=m.t;
+                this.check_tFAW();
+                if(same_bank) this.check_cycle(cycle_interval,(tRP+tWTP_sb),DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tRP+tWTP_sb");
+              end
+              PRECHARGE: begin
+                if (same_bank) this.check_cycle(cycle_interval,tPP_sb,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tPP_sb");
+              end
+              default:begin
+                if(same_bank) `uvm_error("COMMAND VIOLATION", $sformatf("[DFI-SB]CMD VIOLATION BETWEEN %s and %s",DDR_CMD[m_last.cmd],DDR_CMD[m.cmd]))
+              end
+            endcase
+          end
+
+          PRECHARGE: begin
+            case(m.cmd)
+              ACTIVATE: begin
+                this.check_tRRD(m.t,last_activate_cmd);
+                this.check_tRC(m.t,last_activate_cmd_pb[m.bank]);
+                last_activate_cmd=m.t;
+                last_activate_cmd_pb[m.bank]=m.t;
+                this.check_tFAW();
+                if(same_bank) this.check_timing(t_diff,tRP_ns,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tRP_ns");
+              end
+              PRECHARGE: begin
+                if (same_bank) this.check_cycle(cycle_interval,tPP_sb,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tPP_sb");
+              end
+              default:begin
+                if(same_bank) `uvm_error("COMMAND VIOLATION", $sformatf("[DFI-SB]CMD VIOLATION BETWEEN %s and %s",DDR_CMD[m_last.cmd],DDR_CMD[m.cmd]))
+              end
+            endcase
+          end
+          ACTIVATE: begin
+            case(m.cmd)
+              COL_READ: begin
+                if(same_bank) this.check_timing(t_diff,tRCD_ns,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tRCD_ns");
+              end
+              COL_WRITE: begin
+                if(same_bank) this.check_timing(t_diff,tRCD_ns,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tRCD_ns");
+              end
+              MASKED_WRITE: begin
+                if(same_bank) this.check_timing(t_diff,tRCD_ns,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tRCD_ns");
+              end
+              COL_READ_AP: begin
+                if(same_bank) this.check_timing(t_diff,tRCD_ns,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tRCD_ns");
+              end
+              COL_WRITE_AP: begin
+                if(same_bank) this.check_timing(t_diff,tRCD_ns,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tRCD_ns");
+              end
+              MASKED_WRITE_AP: begin
+                if(same_bank) this.check_timing(t_diff,tRCD_ns,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tRCD_ns");
+              end
+              PRECHARGE: begin
+                if(same_bank) this.check_timing(t_diff,tRAS_ns,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tRAS_ns");
+              end
+              ACTIVATE: begin
+                this.check_tRRD(m.t,last_activate_cmd);
+                this.check_tRC(m.t,last_activate_cmd_pb[m.bank]);
+                last_activate_cmd=m.t;
+                last_activate_cmd_pb[m.bank]=m.t;
+                this.check_tFAW();
+                if(same_bank) `uvm_error("COMMAND VIOLATION", $sformatf("[DFI-SB]CMD VIOLATION BETWEEN %s and %s",DDR_CMD[m_last.cmd],DDR_CMD[m.cmd]))
+                else begin
+                  this.check_timing(t_diff,tRRD_ns,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tRRD_ns");
+                end
+              end
+              default:begin
+                `uvm_error("COMMAND VIOLATION", $sformatf("[DFI]CMD VIOLATION BETWEEN %s and %s",DDR_CMD[m_last.cmd],DDR_CMD[m.cmd]))
+              end
+            endcase
+          end
+          COL_READ: begin
+            case(m.cmd)
+              PRECHARGE: begin
+                if(same_bank) this.check_timing(t_diff,tRTP_ns,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tRTP_ns");
+                else this.check_cycle(cycle_interval,tCCD,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tCCD");
+              end
+              ACTIVATE:begin
+                this.check_tRRD(m.t,last_activate_cmd);
+                this.check_tRC(m.t,last_activate_cmd_pb[m.bank]);
+                last_activate_cmd=m.t;
+                last_activate_cmd_pb[m.bank]=m.t;
+                this.check_tFAW();
+                if(same_bank) `uvm_error("COMMAND VIOLATION", $sformatf("[DFI]CMD VIOLATION BETWEEN %s and %s",DDR_CMD[m_last.cmd],DDR_CMD[m.cmd]))
+                else this.check_cycle(cycle_interval,tCCD,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tCCD");
+              end
+              COL_READ: begin
+                this.check_cycle(cycle_interval,tCCD,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tCCD");
+              end
+              COL_WRITE: begin
+                this.check_cycle(cycle_interval,tRTW_sb,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tRTW_sb");
+              end
+              MASKED_WRITE: begin
+                this.check_cycle(cycle_interval,tRTW_sb,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tRTW_sb");
+              end
+              COL_READ_AP: begin
+                this.check_cycle(cycle_interval,tCCD,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tCCD");
+              end
+              COL_WRITE_AP: begin
+                this.check_cycle(cycle_interval,tRTW_sb,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tRTW_sb");
+              end
+              MASKED_WRITE_AP: begin
+                this.check_cycle(cycle_interval,tRTW_sb,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tRTW_sb");
+              end
+              default:begin
+                `uvm_error("COMMAND VIOLATION", $sformatf("[DFI]CMD VIOLATION BETWEEN %s and %s",DDR_CMD[m_last.cmd],DDR_CMD[m.cmd]))
+              end
+            endcase
+          end
+          COL_WRITE: begin
+            case(m.cmd)
+              PRECHARGE: begin
+                if(same_bank) this.check_cycle(cycle_interval,tWTP_sb,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tWTP_sb");
+                else this.check_cycle(cycle_interval,tCCD,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tCCD");
+              end
+              ACTIVATE:begin
+                this.check_tRRD(m.t,last_activate_cmd);
+                this.check_tRC(m.t,last_activate_cmd_pb[m.bank]);
+                last_activate_cmd=m.t;
+                last_activate_cmd_pb[m.bank]=m.t;
+                this.check_tFAW();
+                if(same_bank) `uvm_error("COMMAND VIOLATION", $sformatf("[DFI]CMD VIOLATION BETWEEN %s and %s",DDR_CMD[m_last.cmd],DDR_CMD[m.cmd]))
+                else this.check_cycle(cycle_interval,tCCD,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tCCD");
+              end
+              COL_READ: begin
+                this.check_cycle(cycle_interval,tWTR_sb,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tWTR_sb");
+              end
+              COL_WRITE: begin
+                this.check_cycle(cycle_interval,tCCD,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tCCD");
+              end
+              MASKED_WRITE: begin
+                if(same_bank) this.check_cycle(cycle_interval,tCCDMW,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tCCDMW");
+                else this.check_cycle(cycle_interval,tCCD,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tCCD");
+              end
+              COL_READ_AP: begin
+                this.check_cycle(cycle_interval,tWTR_sb,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tWTR_sb");
+              end
+              COL_WRITE_AP: begin
+                this.check_cycle(cycle_interval,tCCD,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tCCD");
+              end
+              MASKED_WRITE_AP: begin
+                if(same_bank) this.check_cycle(cycle_interval,tCCDMW,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tCCDMW");
+                else this.check_cycle(cycle_interval,tCCD,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tCCD");
+              end
+              default:begin
+                `uvm_error("COMMAND VIOLATION", $sformatf("[DFI]CMD VIOLATION BETWEEN %s and %s",DDR_CMD[m_last.cmd],DDR_CMD[m.cmd]))
+              end
+            endcase
+          end
+          MASKED_WRITE: begin
+            case(m.cmd)
+              PRECHARGE: begin
+                if(same_bank) this.check_cycle(cycle_interval,tWTP_sb,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tWTP_sb");
+                else this.check_cycle(cycle_interval,tCCD,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tCCD");
+              end
+              ACTIVATE:begin
+                this.check_tRRD(m.t,last_activate_cmd);
+                this.check_tRC(m.t,last_activate_cmd_pb[m.bank]);
+                last_activate_cmd=m.t;
+                last_activate_cmd_pb[m.bank]=m.t;
+                this.check_tFAW();
+                if(same_bank) `uvm_error("COMMAND VIOLATION", $sformatf("[DFI]CMD VIOLATION BETWEEN %s and %s",DDR_CMD[m_last.cmd],DDR_CMD[m.cmd]))
+                else this.check_cycle(cycle_interval,tCCD,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tCCD");
+              end
+              COL_READ: begin
+                this.check_cycle(cycle_interval,tWTR_sb,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tWTR_sb");
+              end
+              COL_WRITE: begin
+                this.check_cycle(cycle_interval,tCCD,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tCCD");
+              end
+              MASKED_WRITE: begin
+                if(same_bank) this.check_cycle(cycle_interval,tCCDMW,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tCCDMW");
+                else this.check_cycle(cycle_interval,tCCD,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tCCD");
+              end
+              COL_READ_AP: begin
+                this.check_cycle(cycle_interval,tWTR_sb,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tWTR_sb");
+              end
+              COL_WRITE_AP: begin
+                this.check_cycle(cycle_interval,tCCD,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tCCD");
+              end
+              MASKED_WRITE_AP: begin
+                if(same_bank) this.check_cycle(cycle_interval,tCCDMW,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tCCDMW");
+                else this.check_cycle(cycle_interval,tCCD,DDR_CMD[m.cmd],DDR_CMD[m_last.cmd],"tCCD");
+              end
+              default:begin
+                `uvm_error("COMMAND VIOLATION", $sformatf("[DFI]CMD VIOLATION BETWEEN %s and %s",DDR_CMD[m_last.cmd],DDR_CMD[m.cmd]))
+              end
+            endcase
+          end
+          default:begin
+          end
+      endcase
+    endtask
 
     task mon_trans();
       dfi_cmd_t m0;
       dfi_cmd_t m1;
       dfi_cmd_t m2;
       dfi_cmd_t m3;
+      
+      m0.cmd=ERROR_0;
+      m1.cmd=ERROR_0;
+      m2.cmd=ERROR_0;
+      m3.cmd=ERROR_0;
+
+      m_last.cmd=ERROR_0;
       //p0
       forever begin
         @(posedge intf.clk iff ((intf.dfi_phase0_interface_if.mon_ck.ras_n==='b0)||(intf.dfi_phase0_interface_if.mon_ck.cas_n==='b0)||(intf.dfi_phase1_interface_if.mon_ck.ras_n==='b0)||(intf.dfi_phase1_interface_if.mon_ck.cas_n==='b0)||(intf.dfi_phase2_interface_if.mon_ck.ras_n==='b0)||(intf.dfi_phase2_interface_if.mon_ck.cas_n==='b0)||(intf.dfi_phase3_interface_if.mon_ck.ras_n==='b0)||(intf.dfi_phase3_interface_if.mon_ck.cas_n==='b0)));
@@ -574,17 +1330,31 @@ package multiplexer_pkg;
         m0.mw = intf.dfi_phase0_interface_if.mon_ck.mw;
         m0.bank= intf.dfi_phase0_interface_if.mon_ck.bank;
         m0.address = intf.dfi_phase0_interface_if.mon_ck.address;
+        m0.t=$time;
         case({intf.dfi_phase0_interface_if.mon_ck.ras_n,intf.dfi_phase0_interface_if.mon_ck.cas_n,intf.dfi_phase0_interface_if.mon_ck.we_n,intf.dfi_phase0_interface_if.mon_ck.mw})
-          4'b0100: m0.cmd=PRECHARGE;
+          4'b0011: m0.cmd=REFRESH_ALL;
+          4'b0100: begin
+            m0.cmd=PRECHARGE;
+            if(intf.dfi_phase0_interface_if.mon_ck.address[10]==1'b1) m0.cmd=PRECHARGE_ALL;
+          end
           4'b0110: m0.cmd=ACTIVATE;
-          4'b1010: m0.cmd=COL_READ;
-          4'b1000: m0.cmd=COL_WRITE;
-          4'b1001: m0.cmd=MASKED_WRITE;
+          4'b1010: begin
+            m0.cmd=COL_READ;
+            if(intf.dfi_phase0_interface_if.mon_ck.address[10]==1'b1) m0.cmd=COL_READ_AP;
+          end
+          4'b1000: begin
+            m0.cmd=COL_WRITE;
+            if(intf.dfi_phase0_interface_if.mon_ck.address[10]==1'b1) m0.cmd=COL_WRITE_AP;
+          end
+          4'b1001: begin
+            m0.cmd=MASKED_WRITE;
+            if(intf.dfi_phase0_interface_if.mon_ck.address[10]==1'b1) m0.cmd=MASKED_WRITE_AP;
+          end
           default: m0.cmd=ERROR_0;
         endcase
         if(m0.cmd!=ERROR_0) begin
           mon_dfi_port.write(m0);
-          `uvm_info(get_type_name(), $sformatf("monitored DFI p0 cmd %s at bank %d, address 0x%h", DDR_CMD[m0.cmd],m0.bank,m0.address), UVM_HIGH)
+          `uvm_info(get_type_name(), $sformatf("Time: %0t monitored DFI p0 cmd %s at bank %d, address 0x%h", m0.t,DDR_CMD[m0.cmd],m0.bank,m0.address), UVM_HIGH)
         end
         //p1
         //@(posedge intf.clk iff ((intf.dfi_phase1_interface_if.mon_ck.ras_n==='b0)||(intf.dfi_phase1_interface_if.mon_ck.cas_n==='b0)));
@@ -594,17 +1364,31 @@ package multiplexer_pkg;
         m1.mw = intf.dfi_phase1_interface_if.mon_ck.mw;
         m1.bank= intf.dfi_phase1_interface_if.mon_ck.bank;
         m1.address = intf.dfi_phase1_interface_if.mon_ck.address;
+        m1.t=$time;
         case({intf.dfi_phase1_interface_if.mon_ck.ras_n,intf.dfi_phase1_interface_if.mon_ck.cas_n,intf.dfi_phase1_interface_if.mon_ck.we_n,intf.dfi_phase1_interface_if.mon_ck.mw})
-          4'b0100: m1.cmd=PRECHARGE;
+          4'b0011: m1.cmd=REFRESH_ALL;
+          4'b0100: begin
+            m1.cmd=PRECHARGE;
+            if(intf.dfi_phase1_interface_if.mon_ck.address[10]==1'b1) m1.cmd=PRECHARGE_ALL;
+          end
           4'b0110: m1.cmd=ACTIVATE;
-          4'b1010: m1.cmd=COL_READ;
-          4'b1000: m1.cmd=COL_WRITE;
-          4'b1001: m1.cmd=MASKED_WRITE;
+          4'b1010: begin
+            m1.cmd=COL_READ;
+            if(intf.dfi_phase1_interface_if.mon_ck.address[10]==1'b1) m1.cmd=COL_READ_AP;
+          end
+          4'b1000: begin
+            m1.cmd=COL_WRITE;
+            if(intf.dfi_phase1_interface_if.mon_ck.address[10]==1'b1) m1.cmd=COL_WRITE_AP;
+          end
+          4'b1001: begin
+            m1.cmd=MASKED_WRITE;
+            if(intf.dfi_phase1_interface_if.mon_ck.address[10]==1'b1) m1.cmd=MASKED_WRITE_AP;
+          end
           default: m1.cmd=ERROR_0;
         endcase
         if(m1.cmd!=ERROR_0) begin
           mon_dfi_port.write(m1);
-          `uvm_info(get_type_name(), $sformatf("monitored DFI p1 cmd %s at bank %d, address 0x%h", DDR_CMD[m1.cmd],m1.bank,m1.address), UVM_HIGH)
+          `uvm_info(get_type_name(), $sformatf("Time: %0t monitored DFI p1 cmd %s at bank %d, address 0x%h",m1.t, DDR_CMD[m1.cmd],m1.bank,m1.address), UVM_HIGH)
         end
 
         //p2
@@ -615,17 +1399,31 @@ package multiplexer_pkg;
         m2.mw = intf.dfi_phase2_interface_if.mon_ck.mw;
         m2.bank= intf.dfi_phase2_interface_if.mon_ck.bank;
         m2.address = intf.dfi_phase2_interface_if.mon_ck.address;
+        m2.t=$time;
         case({intf.dfi_phase2_interface_if.mon_ck.ras_n,intf.dfi_phase2_interface_if.mon_ck.cas_n,intf.dfi_phase2_interface_if.mon_ck.we_n,intf.dfi_phase2_interface_if.mon_ck.mw})
-          4'b0100: m2.cmd=PRECHARGE;
+          4'b0011: m2.cmd=REFRESH_ALL;
+          4'b0100: begin
+            m2.cmd=PRECHARGE;
+            if(intf.dfi_phase2_interface_if.mon_ck.address[10]==1'b1) m2.cmd=PRECHARGE_ALL;
+          end
           4'b0110: m2.cmd=ACTIVATE;
-          4'b1010: m2.cmd=COL_READ;
-          4'b1000: m2.cmd=COL_WRITE;
-          4'b1001: m2.cmd=MASKED_WRITE;
+          4'b1010: begin
+            m2.cmd=COL_READ;
+            if(intf.dfi_phase2_interface_if.mon_ck.address[10]==1'b1) m2.cmd=COL_READ_AP;
+          end
+          4'b1000: begin
+            m2.cmd=COL_WRITE;
+            if(intf.dfi_phase2_interface_if.mon_ck.address[10]==1'b1) m2.cmd=COL_WRITE_AP;
+          end
+          4'b1001: begin
+            m2.cmd=MASKED_WRITE;
+            if(intf.dfi_phase2_interface_if.mon_ck.address[10]==1'b1) m2.cmd=MASKED_WRITE_AP;
+          end
           default: m2.cmd=ERROR_0;
         endcase
         if(m2.cmd!=ERROR_0) begin
           mon_dfi_port.write(m2);
-          `uvm_info(get_type_name(), $sformatf("monitored DFI p2 cmd %s at bank %d, address 0x%h", DDR_CMD[m2.cmd],m2.bank,m2.address), UVM_HIGH)
+          `uvm_info(get_type_name(), $sformatf("Time: %0t monitored DFI p2 cmd %s at bank %d, address 0x%h", m2.t,DDR_CMD[m2.cmd],m2.bank,m2.address), UVM_HIGH)
         end
         //p3
         //@(posedge intf.clk iff ((intf.dfi_phase3_interface_if.mon_ck.ras_n==='b0)||(intf.dfi_phase3_interface_if.mon_ck.cas_n==='b0)));
@@ -635,20 +1433,35 @@ package multiplexer_pkg;
         m3.mw = intf.dfi_phase3_interface_if.mon_ck.mw;
         m3.bank= intf.dfi_phase3_interface_if.mon_ck.bank;
         m3.address = intf.dfi_phase3_interface_if.mon_ck.address;
+        m3.t=$time;
         case({intf.dfi_phase3_interface_if.mon_ck.ras_n,intf.dfi_phase3_interface_if.mon_ck.cas_n,intf.dfi_phase3_interface_if.mon_ck.we_n,intf.dfi_phase3_interface_if.mon_ck.mw})
-          4'b0100: m3.cmd=PRECHARGE;
+          4'b0011: m3.cmd=REFRESH_ALL;
+          4'b0100: begin
+            m3.cmd=PRECHARGE;
+            if(intf.dfi_phase3_interface_if.mon_ck.address[10]==1'b1) m3.cmd=PRECHARGE_ALL;
+          end
           4'b0110: m3.cmd=ACTIVATE;
-          4'b1010: m3.cmd=COL_READ;
-          4'b1000: m3.cmd=COL_WRITE;
-          4'b1001: m3.cmd=MASKED_WRITE;
+          4'b1010: begin
+            m3.cmd=COL_READ;
+            if(intf.dfi_phase3_interface_if.mon_ck.address[10]==1'b1) m3.cmd=COL_READ_AP;
+          end
+          4'b1000: begin
+            m3.cmd=COL_WRITE;
+            if(intf.dfi_phase3_interface_if.mon_ck.address[10]==1'b1) m3.cmd=COL_WRITE_AP;
+          end
+          4'b1001: begin
+            m3.cmd=MASKED_WRITE;
+            if(intf.dfi_phase3_interface_if.mon_ck.address[10]==1'b1) m3.cmd=MASKED_WRITE_AP;
+          end
           default: m3.cmd=ERROR_0;
         endcase
         if(m3.cmd!=ERROR_0) begin
           mon_dfi_port.write(m3);
-          `uvm_info(get_type_name(), $sformatf("monitored DFI p3 cmd %s at bank %d, address 0x%h",DDR_CMD[m3.cmd],m3.bank,m3.address), UVM_HIGH)
+          `uvm_info(get_type_name(), $sformatf("Time: %0t monitored DFI p3 cmd %s at bank %d, address 0x%h",m3.t,DDR_CMD[m3.cmd],m3.bank,m3.address), UVM_HIGH)
         end
+
+        //this.update_cmd(m0,m1,m2,m3);
       end
-      
     endtask
   endclass
 
@@ -659,6 +1472,7 @@ package multiplexer_pkg;
     local virtual dfi_interface dfi_vif;
     local virtual cmd_rw_interface bm_vifs[8];
     uvm_tlm_analysis_fifo #(cmd_t) in_tlm_fifos[8];
+    uvm_tlm_analysis_fifo #(cmd_t) in_tlm_fifo_refresher;
     uvm_tlm_analysis_fifo #(dfi_cmd_t) out_tlm_fifo;
 
     `uvm_component_utils(dfi_checker)
@@ -666,6 +1480,7 @@ package multiplexer_pkg;
     function new (string name = "dfi_checker", uvm_component parent);
       super.new(name, parent);
       foreach(in_tlm_fifos[i]) in_tlm_fifos[i] = new($sformatf("in_tlm_fifos[%0d]", i), this);
+      in_tlm_fifo_refresher= new("in_tlm_fifo_refresher", this);
       out_tlm_fifo = new("out_tlm_fifo", this);
       this.error_count = 0;
       this.cmp_count = 0;
@@ -696,17 +1511,21 @@ package multiplexer_pkg;
       dfi_cmd_t om;
       forever begin
         out_tlm_fifo.get(om);
-        case(om.bank)
-          0: begin in_tlm_fifos[0].get(im); this.bank_ad=0; end
-          1: begin in_tlm_fifos[1].get(im); this.bank_ad=1; end
-          2: begin in_tlm_fifos[2].get(im); this.bank_ad=2; end
-          3: begin in_tlm_fifos[3].get(im); this.bank_ad=3; end
-          4: begin in_tlm_fifos[4].get(im); this.bank_ad=4; end
-          5: begin in_tlm_fifos[5].get(im); this.bank_ad=5; end
-          6: begin in_tlm_fifos[6].get(im); this.bank_ad=6; end
-          7: begin in_tlm_fifos[7].get(im); this.bank_ad=7; end
-          default: `uvm_fatal(get_type_name(), $sformatf("bank %0d is not available", om.bank))
-        endcase
+        if((om.cmd==PRECHARGE_ALL)||(om.cmd==REFRESH_ALL)) begin
+          in_tlm_fifo_refresher.get(im);
+        end else begin
+          case(om.bank)
+            0: begin in_tlm_fifos[0].get(im); this.bank_ad=0; end
+            1: begin in_tlm_fifos[1].get(im); this.bank_ad=1; end
+            2: begin in_tlm_fifos[2].get(im); this.bank_ad=2; end
+            3: begin in_tlm_fifos[3].get(im); this.bank_ad=3; end
+            4: begin in_tlm_fifos[4].get(im); this.bank_ad=4; end
+            5: begin in_tlm_fifos[5].get(im); this.bank_ad=5; end
+            6: begin in_tlm_fifos[6].get(im); this.bank_ad=6; end
+            7: begin in_tlm_fifos[7].get(im); this.bank_ad=7; end
+            default: `uvm_fatal(get_type_name(), $sformatf("bank %0d is not available", om.bank))
+          endcase
+        end
         if((om.cmd != im.cmd) || (om.address != im.address) ) begin
           this.error_count++;
           `uvm_error("CMPFAIL", $sformatf("Compared failed! multiplexer out DFI cmd %s at bank %0d at address %h is not equal with bankmachine %d in cmd %s at address %h", DDR_CMD[om.cmd], om.bank, om.address,this.bank_ad,DDR_CMD[im.cmd],im.address))
@@ -742,6 +1561,7 @@ package multiplexer_pkg;
   //uvm_env
   class multiplexer_env extends uvm_env;
     bm_agent agents[8];
+    refresher_monitor refresher_mon;
     dfi_monitor dfi_mon;
     dfi_checker dfi_chker;
     multiplexer_virtual_sequencer virt_sqr;
@@ -761,6 +1581,7 @@ package multiplexer_pkg;
         //this.agents[i].driver.set_bank_address(i);
       end
       this.dfi_mon = dfi_monitor::type_id::create("dfi_mon", this);
+      this.refresher_mon = refresher_monitor::type_id::create("refresher_mon", this);
       //this.dfi_cvrg = dfi_coverage::type_id::create("dfi_cvrg", this);
       virt_sqr = multiplexer_virtual_sequencer::type_id::create("virt_sqr", this);
     endfunction
@@ -771,6 +1592,7 @@ package multiplexer_pkg;
         this.agents[i].monitor.mon_cmd_port.connect(this.dfi_chker.in_tlm_fifos[i].analysis_export);
       end
       this.dfi_mon.mon_dfi_port.connect(this.dfi_chker.out_tlm_fifo.analysis_export);
+      this.refresher_mon.mon_cmd_port.connect(this.dfi_chker.in_tlm_fifo_refresher.analysis_export);
       foreach(virt_sqr.bm_sqrs[i]) begin
         virt_sqr.bm_sqrs[i]=agents[i].sequencer;
       end
@@ -812,6 +1634,7 @@ package multiplexer_pkg;
     virtual cmd_rw_interface bm5_vif;
     virtual cmd_rw_interface bm6_vif;
     virtual cmd_rw_interface bm7_vif;
+    virtual cmd_rw_interface refresher_vif;
     virtual dfi_interface dfi_vif;
 
     `uvm_component_utils(multiplexer_root_test)
@@ -848,7 +1671,10 @@ package multiplexer_pkg;
         `uvm_fatal("GETVIF","cannot get cmd vif handle from config DB")
       end
       if(!uvm_config_db#(virtual dfi_interface)::get(this,"","dfi_vif", dfi_vif)) begin
-        `uvm_fatal("GETVIF","cannot get cmd vif handle from config DB")
+        `uvm_fatal("GETVIF","cannot get dfi vif handle from config DB")
+      end
+      if(!uvm_config_db#(virtual cmd_rw_interface)::get(this,"","refresher_vif", refresher_vif)) begin
+        `uvm_fatal("GETVIF","cannot get refresher vif handle from config DB")
       end
       env = multiplexer_env::type_id::create("env", this);
     endfunction
@@ -857,7 +1683,7 @@ package multiplexer_pkg;
       super.connect_phase(phase);
       // After get virtual interface from config_db, and then set them to
       // child components
-      this.set_interface(bm0_vif, bm1_vif, bm2_vif, bm3_vif, bm4_vif, bm5_vif, bm6_vif,bm7_vif,dfi_vif);
+      this.set_interface(bm0_vif, bm1_vif, bm2_vif, bm3_vif, bm4_vif, bm5_vif, bm6_vif,bm7_vif,refresher_vif,dfi_vif);
     endfunction
 
     function void end_of_elaboration_phase(uvm_phase phase);
@@ -887,6 +1713,7 @@ package multiplexer_pkg;
                                         ,virtual cmd_rw_interface bm5_vif
                                         ,virtual cmd_rw_interface bm6_vif
                                         ,virtual cmd_rw_interface bm7_vif
+                                        ,virtual cmd_rw_interface refresher_vif
                                         ,virtual dfi_interface dfi_vif
                                       );
       this.env.agents[0].set_interface(bm0_vif);
@@ -897,8 +1724,9 @@ package multiplexer_pkg;
       this.env.agents[5].set_interface(bm5_vif);
       this.env.agents[6].set_interface(bm6_vif);
       this.env.agents[7].set_interface(bm7_vif);
+      this.env.refresher_mon.set_interface(refresher_vif);
       this.env.dfi_mon.set_interface(dfi_vif);
-      this.env.dfi_chker.set_interface(dfi_vif, '{bm0_vif, bm1_vif, bm2_vif,bm3_vif, bm4_vif, bm5_vif,bm6_vif, bm7_vif});
+      this.env.dfi_chker.set_interface(dfi_vif,'{bm0_vif, bm1_vif, bm2_vif,bm3_vif, bm4_vif, bm5_vif,bm6_vif, bm7_vif});
       //this.env.cvrg.set_interface('{ch0_vif, ch1_vif, ch2_vif}, reg_vif, arb_vif, fmt_vif, mcdf_vif);
       this.env.virt_sqr.set_interface(dfi_vif);
     endfunction
@@ -915,32 +1743,32 @@ package multiplexer_pkg;
       this.wait_cycles(10);
       fork
         `uvm_do_on_with(bm_cmd_seq, p_sequencer.bm_sqrs[0], 
-                        {ntrans== 10; bank_address==0;cmd_size==6;}
+                        {ntrans== 200; bank_address==0;cmd_size==6;}
                        )
         `uvm_do_on_with(bm_cmd_seq, p_sequencer.bm_sqrs[1], 
-                        {ntrans== 10; bank_address==1;cmd_size==6;}
+                        {ntrans== 200; bank_address==1;cmd_size==6;}
                        )
         `uvm_do_on_with(bm_cmd_seq, p_sequencer.bm_sqrs[2], 
-                        {ntrans== 10; bank_address==2;cmd_size==6;}
+                        {ntrans== 200; bank_address==2;cmd_size==6;}
                        )
         `uvm_do_on_with(bm_cmd_seq, p_sequencer.bm_sqrs[3], 
-                        {ntrans== 10; bank_address==3;cmd_size==6;}
+                        {ntrans== 200; bank_address==3;cmd_size==6;}
                        )
         `uvm_do_on_with(bm_cmd_seq, p_sequencer.bm_sqrs[4], 
-                        {ntrans== 10; bank_address==4;cmd_size==6;}
+                        {ntrans== 200; bank_address==4;cmd_size==6;}
                        )
         `uvm_do_on_with(bm_cmd_seq, p_sequencer.bm_sqrs[5], 
-                        {ntrans== 10; bank_address==5;cmd_size==6;}
+                        {ntrans== 200; bank_address==5;cmd_size==6;}
                        )
         `uvm_do_on_with(bm_cmd_seq, p_sequencer.bm_sqrs[6], 
-                        {ntrans== 10; bank_address==6;cmd_size==6;}
+                        {ntrans== 200; bank_address==6;cmd_size==6;}
                        )
         `uvm_do_on_with(bm_cmd_seq, p_sequencer.bm_sqrs[7], 
-                        {ntrans== 10; bank_address==7;cmd_size==6;}
+                        {ntrans== 200; bank_address==7;cmd_size==6;}
                        )
        
       join
-      #10us; // wait until all data haven been transfered through MCDF
+      #10us; // wait until all data haven been transfered
     endtask
   endclass
 

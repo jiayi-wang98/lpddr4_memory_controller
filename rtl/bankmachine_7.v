@@ -28,7 +28,7 @@ module bankmachine_7(
 	input [7:0] bm_tRAS_cfg,
 	input [7:0] bm_tRP_cfg,
 	input [7:0] bm_tRCD_cfg,
-	input [7:0] bm_tCCDMW_cfg,
+	input [7:0] bm_tRCD_cfg_1,
 	input sys_clk,
 	input sys_rst
 );
@@ -152,7 +152,7 @@ always @(*) begin
 	dummy_d <= dummy_s;
 // synthesis translate_on
 end
-assign tccdmwcon_valid = (((cmd_valid & cmd_ready) & cmd_payload_is_write) & cmd_payload_is_mw);
+assign tccdmwcon_valid = ((cmd_valid & cmd_ready) & cmd_payload_is_write);
 assign twtpcon_valid = ((cmd_valid & cmd_ready) & cmd_payload_is_write);
 assign trccon_valid = ((cmd_valid & cmd_ready) & row_open);
 assign trascon_valid = ((cmd_valid & cmd_ready) & row_open);
@@ -240,7 +240,7 @@ always @(*) begin
 			if ((twtpcon_ready & trascon_ready)) begin
 				cmd_valid <= 1'd1;
 				if (cmd_ready) begin
-					next_state <= 3'd6;
+					next_state <= 3'd5;
 					trpcon_valid <= 1'd1;
 				end
 				cmd_payload_ras <= 1'd1;
@@ -250,31 +250,26 @@ always @(*) begin
 			row_close <= 1'd1;
 		end
 		2'd2: begin
-			if (tccdmwcon_ready) begin
-				next_state <= 1'd0;
-			end
-		end
-		2'd3: begin
 			if ((twtpcon_ready & trascon_ready)) begin
-				next_state <= 3'd6;
+				next_state <= 3'd5;
 				trpcon_valid <= 1'd1;
 			end
 			row_close <= 1'd1;
 		end
-		3'd4: begin
+		2'd3: begin
 			if (trccon_ready) begin
 				row_col_n_addr_sel <= 1'd1;
 				row_open <= 1'd1;
 				cmd_valid <= 1'd1;
 				cmd_payload_is_cmd <= 1'd1;
 				if (cmd_ready) begin
-					next_state <= 3'd7;
+					next_state <= 3'd6;
 					trcdcon_valid <= 1'd1;
 				end
 				cmd_payload_ras <= 1'd1;
 			end
 		end
-		3'd5: begin
+		3'd4: begin
 			if (twtpcon_ready) begin
 				refresh_gnt <= 1'd1;
 			end
@@ -284,13 +279,13 @@ always @(*) begin
 				next_state <= 1'd0;
 			end
 		end
-		3'd6: begin
+		3'd5: begin
 			trpcon_valid <= 1'd0;
 			if (trpcon_ready) begin
-				next_state <= 3'd4;
+				next_state <= 2'd3;
 			end
 		end
-		3'd7: begin
+		3'd6: begin
 			trcdcon_valid <= 1'd0;
 			if (trcdcon_ready) begin
 				next_state <= 1'd0;
@@ -298,39 +293,43 @@ always @(*) begin
 		end
 		default: begin
 			if (refresh_req) begin
-				next_state <= 3'd5;
+				next_state <= 3'd4;
 			end else begin
 				if (cmd_buffer_source_valid) begin
 					if (row_opened) begin
-						if ((row_hit & tccdmwcon_ready)) begin
-							cmd_valid <= 1'd1;
+						if (row_hit) begin
 							if (cmd_buffer_source_payload_we) begin
 								if (cmd_buffer_source_payload_mw) begin
-									cmd_payload_is_mw <= 1'd1;
-									req_wdata_ready <= cmd_ready;
-									cmd_payload_is_write <= 1'd1;
-									cmd_payload_we <= 1'd1;
-									if (cmd_ready) begin
-										next_state <= 2'd2;
+									if (tccdmwcon_ready) begin
+										cmd_valid <= 1'd1;
+										cmd_payload_is_mw <= 1'd1;
+										req_wdata_ready <= cmd_ready;
+										cmd_payload_is_write <= 1'd1;
+										cmd_payload_we <= 1'd1;
+									end else begin
+										req_wdata_ready <= 1'd0;
 									end
 								end else begin
+									cmd_valid <= 1'd1;
+									cmd_payload_is_mw <= 1'd0;
 									req_wdata_ready <= cmd_ready;
 									cmd_payload_is_write <= 1'd1;
 									cmd_payload_we <= 1'd1;
 								end
 							end else begin
+								cmd_valid <= 1'd1;
 								req_rdata_valid <= cmd_ready;
 								cmd_payload_is_read <= 1'd1;
 							end
 							cmd_payload_cas <= 1'd1;
 							if ((cmd_ready & auto_precharge)) begin
-								next_state <= 2'd3;
+								next_state <= 2'd2;
 							end
 						end else begin
 							next_state <= 1'd1;
 						end
 					end else begin
-						next_state <= 3'd4;
+						next_state <= 2'd3;
 					end
 				end
 			end
@@ -374,8 +373,8 @@ always @(posedge sys_clk) begin
 		cmd_buffer_source_payload_addr <= cmd_buffer_sink_payload_addr;
 	end
 	if (tccdmwcon_valid) begin
-		tccdmwcon_count <= (bm_tCCDMW_cfg - 1'd1);
-		if (((bm_tCCDMW_cfg - 1'd1) == 1'd0)) begin
+		tccdmwcon_count <= (bm_tRCD_cfg_1 - 1'd1);
+		if (((bm_tRCD_cfg_1 - 1'd1) == 1'd0)) begin
 			tccdmwcon_ready <= 1'd1;
 		end else begin
 			tccdmwcon_ready <= 1'd0;

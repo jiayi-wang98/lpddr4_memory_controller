@@ -17,17 +17,24 @@ module multiplexer_tb();
     cmd_rw_interface cmd_rw_if_6(clk,rst);
     cmd_rw_interface cmd_rw_if_7(clk,rst);
 
+    cmd_rw_interface cmd_rw_if_refresher(clk,rst);
+
     logic [7:0] mul_tRRD_cfg=8'd7;
-	logic [7:0] mul_tFAW_cfg=8'd23;
+	logic [7:0] mul_tFAW_cfg=8'd16;
 	logic [7:0] mul_tCCD_cfg=8'd2;
-	logic [7:0] mul_WTR_LATENCY_cfg=8'd32;
-	logic [7:0] mul_RTW_LATENCT_cfg=8'd5;
-	logic [7:0] mul_READ_TIME_cfg=8'd32;
-	logic [7:0] mul_WRITE_TIME_cfg=8'd16;
-	logic [1:0] mul_rd_phase_cfg=2'd2;
-	logic [1:0] mul_wr_phase_cfg=2'd0;
+	logic [7:0] mul_WTR_LATENCY_cfg=8'd13;
+	logic [7:0] mul_RTW_LATENCT_cfg=8'd10;
+	logic [7:0] mul_READ_TIME_cfg=8'd64;
+	logic [7:0] mul_WRITE_TIME_cfg=8'd32;
+	logic [1:0] mul_rd_phase_cfg=2'd0;
+	logic [1:0] mul_wr_phase_cfg=2'd2;
 	logic [1:0] mul_rdcmd_phase_cfg=2'd0;
 	logic [1:0] mul_wrcmd_phase_cfg=2'd0;
+
+    logic [7:0] ref_tRP_cfg=8'd12;
+	logic [7:0] ref_tRFC_cfg=8'd97;
+	logic [11:0] ref_tREFI_cfg=12'd2083;
+	logic [3:0] ref_POSTPONE_cfg=4'd8;
 
     multiplexer_b8 u_multiplexer_b8 (
     .interface_wdata           ('d0),
@@ -101,21 +108,21 @@ module multiplexer_tb();
     .dfi_p3_rddata_en          (dfi_if.dfi_phase3_interface_if.rddata_en),
     .dfi_p3_rddata             (dfi_if.dfi_phase3_interface_if.rddata),
     .dfi_p3_rddata_valid       (dfi_if.dfi_phase3_interface_if.rddata_valid),
-    .cmd_valid                 ('d0),
-    .cmd_ready                 (),
-    .cmd_first                 ('d0),
-    .cmd_last                  ('d0),
-    .cmd_payload_a             ('d0),
-    .cmd_payload_ba            ('d0),
-    .cmd_payload_cas           ('d0),
-    .cmd_payload_ras           ('d0),
-    .cmd_payload_we            ('d0),
-    .cmd_payload_is_cmd        ('d0),
-    .cmd_payload_is_read       ('d0),
-    .cmd_payload_is_write      ('d0),
-    .cmd_payload_is_mw         ('d0),
-    .refresh_req               ('d0),
-    .refresh_gnt               (),
+    .cmd_valid                 (cmd_rw_if_refresher.cmd_valid),
+    .cmd_ready                 (cmd_rw_if_refresher.cmd_ready),
+    .cmd_first                 (cmd_rw_if_refresher.cmd_first),
+    .cmd_last                  (cmd_rw_if_refresher.cmd_last),
+    .cmd_payload_a             (cmd_rw_if_refresher.cmd_payload_a),
+    .cmd_payload_ba            (cmd_rw_if_refresher.cmd_payload_ba),
+    .cmd_payload_cas           (cmd_rw_if_refresher.cmd_payload_cas),
+    .cmd_payload_ras           (cmd_rw_if_refresher.cmd_payload_ras),
+    .cmd_payload_we            (cmd_rw_if_refresher.cmd_payload_we),
+    .cmd_payload_is_cmd        (cmd_rw_if_refresher.cmd_payload_is_cmd),
+    .cmd_payload_is_read       (cmd_rw_if_refresher.cmd_payload_is_read),
+    .cmd_payload_is_write      (cmd_rw_if_refresher.cmd_payload_is_write),
+    .cmd_payload_is_mw         (),
+    .refresh_req               (cmd_rw_if_0.refresh_req),
+    .refresh_gnt               (cmd_rw_if_0.refresh_gnt),
     .cmd_valid_1               (cmd_rw_if_0.cmd_valid),
     .cmd_ready_1               (cmd_rw_if_0.cmd_ready),
     .cmd_first_1               (cmd_rw_if_0.cmd_first),
@@ -129,8 +136,8 @@ module multiplexer_tb();
     .cmd_payload_is_read_1     (cmd_rw_if_0.cmd_payload_is_read),
     .cmd_payload_is_write_1    (cmd_rw_if_0.cmd_payload_is_write),
     .cmd_payload_is_mw_1       (cmd_rw_if_0.cmd_payload_is_mw),
-    .refresh_req_1             ('d0),
-    .refresh_gnt_1             (),
+    .refresh_req_1             (cmd_rw_if_1.refresh_req),
+    .refresh_gnt_1             (cmd_rw_if_1.refresh_gnt),
     .cmd_valid_2               (cmd_rw_if_1.cmd_valid),
     .cmd_ready_2               (cmd_rw_if_1.cmd_ready),
     .cmd_first_2               (cmd_rw_if_1.cmd_first),
@@ -144,8 +151,8 @@ module multiplexer_tb();
     .cmd_payload_is_read_2     (cmd_rw_if_1.cmd_payload_is_read),
     .cmd_payload_is_write_2    (cmd_rw_if_1.cmd_payload_is_write),
     .cmd_payload_is_mw_2       (cmd_rw_if_1.cmd_payload_is_mw),
-    .refresh_req_2             ('d0),
-    .refresh_gnt_2             (),
+    .refresh_req_2             (cmd_rw_if_2.refresh_req),
+    .refresh_gnt_2             (cmd_rw_if_2.refresh_gnt),
     .cmd_valid_3               (cmd_rw_if_2.cmd_valid),
     .cmd_ready_3               (cmd_rw_if_2.cmd_ready),
     .cmd_first_3               (cmd_rw_if_2.cmd_first),
@@ -159,8 +166,8 @@ module multiplexer_tb();
     .cmd_payload_is_read_3     (cmd_rw_if_2.cmd_payload_is_read),
     .cmd_payload_is_write_3    (cmd_rw_if_2.cmd_payload_is_write),
     .cmd_payload_is_mw_3       (cmd_rw_if_2.cmd_payload_is_mw),
-    .refresh_req_3             ('d0),
-    .refresh_gnt_3             (),
+    .refresh_req_3             (cmd_rw_if_3.refresh_req),
+    .refresh_gnt_3             (cmd_rw_if_3.refresh_gnt),
     .cmd_valid_4               (cmd_rw_if_3.cmd_valid),
     .cmd_ready_4               (cmd_rw_if_3.cmd_ready),
     .cmd_first_4               (cmd_rw_if_3.cmd_first),
@@ -174,8 +181,8 @@ module multiplexer_tb();
     .cmd_payload_is_read_4     (cmd_rw_if_3.cmd_payload_is_read),
     .cmd_payload_is_write_4    (cmd_rw_if_3.cmd_payload_is_write),
     .cmd_payload_is_mw_4       (cmd_rw_if_3.cmd_payload_is_mw),
-    .refresh_req_4             ('d0),
-    .refresh_gnt_4             (),
+    .refresh_req_4             (cmd_rw_if_4.refresh_req),
+    .refresh_gnt_4             (cmd_rw_if_4.refresh_gnt),
     .cmd_valid_5               (cmd_rw_if_4.cmd_valid),
     .cmd_ready_5               (cmd_rw_if_4.cmd_ready),
     .cmd_first_5               (cmd_rw_if_4.cmd_first),
@@ -189,8 +196,8 @@ module multiplexer_tb();
     .cmd_payload_is_read_5     (cmd_rw_if_4.cmd_payload_is_read),
     .cmd_payload_is_write_5    (cmd_rw_if_4.cmd_payload_is_write),
     .cmd_payload_is_mw_5       (cmd_rw_if_4.cmd_payload_is_mw),
-    .refresh_req_5             ('d0),
-    .refresh_gnt_5             (),
+    .refresh_req_5             (cmd_rw_if_5.refresh_req),
+    .refresh_gnt_5             (cmd_rw_if_5.refresh_gnt),
     .cmd_valid_6               (cmd_rw_if_5.cmd_valid),
     .cmd_ready_6               (cmd_rw_if_5.cmd_ready),
     .cmd_first_6               (cmd_rw_if_5.cmd_first),
@@ -204,8 +211,8 @@ module multiplexer_tb();
     .cmd_payload_is_read_6     (cmd_rw_if_5.cmd_payload_is_read),
     .cmd_payload_is_write_6    (cmd_rw_if_5.cmd_payload_is_write),
     .cmd_payload_is_mw_6       (cmd_rw_if_5.cmd_payload_is_mw),
-    .refresh_req_6             ('d0),
-    .refresh_gnt_6             (),
+    .refresh_req_6             (cmd_rw_if_6.refresh_req),
+    .refresh_gnt_6             (cmd_rw_if_6.refresh_gnt),
     .cmd_valid_7               (cmd_rw_if_6.cmd_valid),
     .cmd_ready_7               (cmd_rw_if_6.cmd_ready),
     .cmd_first_7               (cmd_rw_if_6.cmd_first),
@@ -219,8 +226,8 @@ module multiplexer_tb();
     .cmd_payload_is_read_7     (cmd_rw_if_6.cmd_payload_is_read),
     .cmd_payload_is_write_7    (cmd_rw_if_6.cmd_payload_is_write),
     .cmd_payload_is_mw_7       (cmd_rw_if_6.cmd_payload_is_mw),
-    .refresh_req_7             ('d0),
-    .refresh_gnt_7             (),
+    .refresh_req_7             (cmd_rw_if_7.refresh_req),
+    .refresh_gnt_7             (cmd_rw_if_7.refresh_gnt),
     //refresher input
     .cmd_valid_8               (cmd_rw_if_7.cmd_valid),
     .cmd_ready_8               (cmd_rw_if_7.cmd_ready),
@@ -250,6 +257,23 @@ module multiplexer_tb();
     .sys_rst                   (rst)
 );
 
+    refresher_pos_8 u_refresher_pos_8 (
+    .cmd_valid           (cmd_rw_if_refresher.cmd_valid),
+    .cmd_ready           (cmd_rw_if_refresher.cmd_ready),
+    .cmd_last            (cmd_rw_if_refresher.cmd_last),
+    .cmd_payload_a       (cmd_rw_if_refresher.cmd_payload_a),
+    .cmd_payload_ba      (cmd_rw_if_refresher.cmd_payload_ba),
+    .cmd_payload_cas     (cmd_rw_if_refresher.cmd_payload_cas),
+    .cmd_payload_ras     (cmd_rw_if_refresher.cmd_payload_ras),
+    .cmd_payload_we      (cmd_rw_if_refresher.cmd_payload_we),
+    .ref_tRP_cfg         (ref_tRP_cfg),
+    .ref_tRFC_cfg        (ref_tRFC_cfg),
+    .ref_tREFI_cfg       (ref_tREFI_cfg),
+    .ref_POSTPONE_cfg    (ref_POSTPONE_cfg),
+    .sys_clk             (clk),
+    .sys_rst             (rst)
+);
+
     initial begin
         clk=0;
         forever begin
@@ -273,6 +297,7 @@ module multiplexer_tb();
         uvm_config_db #(virtual cmd_rw_interface)::set(uvm_root::get(), "uvm_test_top", "bm5_vif", cmd_rw_if_5);
         uvm_config_db #(virtual cmd_rw_interface)::set(uvm_root::get(), "uvm_test_top", "bm6_vif", cmd_rw_if_6);
         uvm_config_db #(virtual cmd_rw_interface)::set(uvm_root::get(), "uvm_test_top", "bm7_vif", cmd_rw_if_7);
+        uvm_config_db #(virtual cmd_rw_interface)::set(uvm_root::get(), "uvm_test_top", "refresher_vif", cmd_rw_if_refresher);
         uvm_config_db #(virtual dfi_interface)::set(uvm_root::get(), "uvm_test_top", "dfi_vif", dfi_if);
         run_test("multiplexer_basic_test");
         $finish;

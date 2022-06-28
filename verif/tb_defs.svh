@@ -4,4 +4,24 @@ typedef enum bit [2:0] {SINGLE, INCR, WRAP4, INCR4, WRAP8, INCR8, WRAP16, INCR16
 typedef enum bit [2:0] {BYTE, HALFWORD, WORD, WORDx2, WORDx4, WORDx8, WORDx16, WORDx32} size_t;
 typedef enum bit [1:0] {OKAY, ERROR, RETRY, SPLIT} resp_t;
 
-typedef enum bit [2:0] {PRECHARGE,ACTIVATE,COL_READ, COL_WRITE, MASKED_WRITE, REFRESH,ERROR_0,ERROR_1} ddr_cmd_t;
+typedef enum bit [3:0] {PRECHARGE,ACTIVATE,COL_READ, COL_WRITE, MASKED_WRITE,COL_READ_AP,COL_WRITE_AP,MASKED_WRITE_AP,REFRESH_ALL,ERROR_0,ERROR_1,PRECHARGE_ALL,RSU_1,RSU_2,RSU_3,RSU_4} ddr_cmd_t;
+
+parameter tRP=12;
+parameter tRP_db=1;
+parameter tRP_ns=21;
+parameter tRFC=97;
+parameter tREFI_ns=3904; //32ms/8192row
+parameter tPP_sb=1;
+parameter tFAW_ns=30; //30 at 2133//40 at f<=1666
+parameter tRCD_ns=18;
+parameter tRCD=11;
+parameter tRAS_ns=42;
+parameter tRC_ns=63;
+parameter tRTP_ns=7.5;
+parameter tRTP_sb=4;
+parameter tCCD=2;
+parameter tCCDMW=8;
+parameter tRRD_ns=10;
+parameter tRTW_sb=10; //RL(40-DBI EN)+RU(tDQSCK/tCK)(3.5ns/7.5)+BL/2(8)-WL(18)+tWPRE(0.4)+RD(tRPSR)(1.8)=40
+parameter tWTP_sb=17; //WL(18)+1+BL/2(8)+RT(tWR/tCK)(40)=67
+parameter tWTR_sb=13; //WL(18)+1+BL/2(8)+RT(tWTR/tCK)(10ns/22)=49

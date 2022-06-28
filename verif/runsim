@@ -1,3 +1,3 @@
 #!/bin/csh -fb
 rm -rf csrc simv*
-vcs -full64  -sverilog -f ./multiplexer_tb.f  -dpi -ntb_opts uvm -debug_pp -timescale=1ns/10ps
+vcs -full64  -sverilog -f ./refresher_tb.f  -debug_pp -timescale=1ns/10ps
