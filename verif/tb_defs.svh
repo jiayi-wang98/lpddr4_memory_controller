@@ -18,15 +18,31 @@ parameter tFAW_ns=30; //30 at 2133//40 at f<=1666
 parameter tRCD_ns=18;
 parameter tRCD=11;
 parameter tRAS_ns=42;
+parameter tRAS=24;
 parameter tRC_ns=63;
+parameter tRC=35;
 parameter tRTP_ns=7.5;
 parameter tRTP_sb=4;
 parameter tCCD=2;
 parameter tCCDMW=8;
 parameter tRRD_ns=10;
+parameter tRRD=7;
 parameter tRTW_sb=10; //RL(40-DBI EN)+RU(tDQSCK/tCK)(3.5ns/7.5)+BL/2(8)-WL(18)+tWPRE(0.4)+RD(tRPSR)(1.8)=40
 parameter tWTP_sb=17; //WL(18)+1+BL/2(8)+RT(tWR/tCK)(40)=67
 parameter tWTR_sb=13; //WL(18)+1+BL/2(8)+RT(tWTR/tCK)(10ns/22)=49
+
+typedef struct packed {
+    time t;
+    bit we;
+    bit mw;
+    bit[22:0] address;
+} req_t;
+
+typedef struct packed {
+    bit [63:0] data;
+    bit we;
+} data_t;
+
 
 typedef struct packed {
     time t;

@@ -23,12 +23,13 @@ module bankmachine_2(
 	output reg cmd_payload_is_read,
 	output reg cmd_payload_is_write,
 	output reg cmd_payload_is_mw,
-	input [7:0] bm_PRECHARGE_TIME_cfg,
+	input [7:0] bm_tRTP_cfg,
+	input [7:0] bm_tWTP_cfg,
 	input [7:0] bm_tRC_cfg,
 	input [7:0] bm_tRAS_cfg,
 	input [7:0] bm_tRP_cfg,
 	input [7:0] bm_tRCD_cfg,
-	input [7:0] bm_tRCD_cfg_1,
+	input [7:0] bm_tCCDMW_cfg,
 	input sys_clk,
 	input sys_rst
 );
@@ -98,6 +99,9 @@ reg row_col_n_addr_sel;
 wire tccdmwcon_valid;
 (* no_retiming = "true" *) reg tccdmwcon_ready = 1'd0;
 reg [7:0] tccdmwcon_count = 8'd0;
+wire trtpcon_valid;
+(* no_retiming = "true" *) reg trtpcon_ready = 1'd0;
+reg [7:0] trtpcon_count = 8'd0;
 wire twtpcon_valid;
 (* no_retiming = "true" *) reg twtpcon_ready = 1'd0;
 reg [7:0] twtpcon_count = 8'd0;
@@ -153,6 +157,7 @@ always @(*) begin
 // synthesis translate_on
 end
 assign tccdmwcon_valid = ((cmd_valid & cmd_ready) & cmd_payload_is_write);
+assign trtpcon_valid = ((cmd_valid & cmd_ready) & cmd_payload_is_read);
 assign twtpcon_valid = ((cmd_valid & cmd_ready) & cmd_payload_is_write);
 assign trccon_valid = ((cmd_valid & cmd_ready) & row_open);
 assign trascon_valid = ((cmd_valid & cmd_ready) & row_open);
@@ -237,7 +242,7 @@ always @(*) begin
 	next_state <= state;
 	case (state)
 		1'd1: begin
-			if ((twtpcon_ready & trascon_ready)) begin
+			if (((twtpcon_ready & trtpcon_ready) & trascon_ready)) begin
 				cmd_valid <= 1'd1;
 				if (cmd_ready) begin
 					next_state <= 3'd5;
@@ -250,7 +255,7 @@ always @(*) begin
 			row_close <= 1'd1;
 		end
 		2'd2: begin
-			if ((twtpcon_ready & trascon_ready)) begin
+			if (((twtpcon_ready & trtpcon_ready) & trascon_ready)) begin
 				next_state <= 3'd5;
 				trpcon_valid <= 1'd1;
 			end
@@ -373,8 +378,8 @@ always @(posedge sys_clk) begin
 		cmd_buffer_source_payload_addr <= cmd_buffer_sink_payload_addr;
 	end
 	if (tccdmwcon_valid) begin
-		tccdmwcon_count <= (bm_tRCD_cfg_1 - 1'd1);
-		if (((bm_tRCD_cfg_1 - 1'd1) == 1'd0)) begin
+		tccdmwcon_count <= (bm_tCCDMW_cfg - 1'd1);
+		if (((bm_tCCDMW_cfg - 1'd1) == 1'd0)) begin
 			tccdmwcon_ready <= 1'd1;
 		end else begin
 			tccdmwcon_ready <= 1'd0;
@@ -387,9 +392,24 @@ always @(posedge sys_clk) begin
 			end
 		end
 	end
+	if (trtpcon_valid) begin
+		trtpcon_count <= (bm_tRTP_cfg - 1'd1);
+		if (((bm_tRTP_cfg - 1'd1) == 1'd0)) begin
+			trtpcon_ready <= 1'd1;
+		end else begin
+			trtpcon_ready <= 1'd0;
+		end
+	end else begin
+		if ((~trtpcon_ready)) begin
+			trtpcon_count <= (trtpcon_count - 1'd1);
+			if ((trtpcon_count == 1'd1)) begin
+				trtpcon_ready <= 1'd1;
+			end
+		end
+	end
 	if (twtpcon_valid) begin
-		twtpcon_count <= (bm_PRECHARGE_TIME_cfg - 1'd1);
-		if (((bm_PRECHARGE_TIME_cfg - 1'd1) == 1'd0)) begin
+		twtpcon_count <= (bm_tWTP_cfg - 1'd1);
+		if (((bm_tWTP_cfg - 1'd1) == 1'd0)) begin
 			twtpcon_ready <= 1'd1;
 		end else begin
 			twtpcon_ready <= 1'd0;
@@ -474,6 +494,7 @@ always @(posedge sys_clk) begin
 		row <= 17'd0;
 		row_opened <= 1'd0;
 		tccdmwcon_ready <= 1'd0;
+		trtpcon_ready <= 1'd0;
 		twtpcon_ready <= 1'd0;
 		trccon_ready <= 1'd0;
 		trascon_ready <= 1'd0;

@@ -97,12 +97,13 @@ class BankMachine(Module):
         self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(a, ba))
 
         # # #
-        self.precharge_time=Signal(max=255,reset_less=True,name="bm_PRECHARGE_TIME_cfg")
+        self.tRTP=Signal(max=255,reset_less=True,name="bm_tRTP_cfg")
+        self.tWTP=Signal(max=255,reset_less=True,name="bm_tWTP_cfg")
         self.tRC=Signal(max=255,reset_less=True,name="bm_tRC_cfg")
         self.tRAS=Signal(max=255,reset_less=True,name="bm_tRAS_cfg")
         self.tRP=Signal(max=255,reset_less=True,name="bm_tRP_cfg")
         self.tRCD=Signal(max=255,reset_less=True,name="bm_tRCD_cfg")
-        self.tCCDMW=Signal(max=255,reset_less=True,name="bm_tRCD_cfg")
+        self.tCCDMW=Signal(max=255,reset_less=True,name="bm_tCCDMW_cfg")
         #self.read_time=Signal(max=255,reset_less=True,name="mul_READ_TIME_cfg")
         #self.write_time=Signal(max=255,reset_less=True,name="mul_WRITE_TIME_cfg")
         auto_precharge = Signal()
@@ -153,12 +154,16 @@ class BankMachine(Module):
         self.submodules.tccdmwcon = tccdmwcon = tXXDController(self.tCCDMW)
         self.comb += tccdmwcon.valid.eq(cmd.valid & cmd.ready & cmd.is_write)
 
+        # tRTP (read-to-precharge) controller -----------------------------------------------------
+        self.submodules.trtpcon = trtpcon = tXXDController(self.tRTP)
+        self.comb += trtpcon.valid.eq(cmd.valid & cmd.ready & cmd.is_read)
+
         # tWTP (write-to-precharge) controller -----------------------------------------------------
         """
         write_latency = math.ceil(settings.phy.cwl / settings.phy.nphases)
         precharge_time = write_latency + settings.timing.tWR + settings.timing.tCCD # AL=0
         """
-        self.submodules.twtpcon = twtpcon = tXXDController(self.precharge_time)
+        self.submodules.twtpcon = twtpcon = tXXDController(self.tWTP)
         self.comb += twtpcon.valid.eq(cmd.valid & cmd.ready & cmd.is_write)
 
         # tRC (activate-activate) controller -------------------------------------------------------
@@ -233,7 +238,7 @@ class BankMachine(Module):
         )
         fsm.act("PRECHARGE",
             # Note: we are presenting the column address, A10 is always low
-            If(twtpcon.ready & trascon.ready,
+            If((twtpcon.ready & trtpcon.ready) & trascon.ready,
                 cmd.valid.eq(1),
                 If(cmd.ready,
                     [NextState("TRP"),
@@ -246,7 +251,7 @@ class BankMachine(Module):
             row_close.eq(1)
         )
         fsm.act("AUTOPRECHARGE",
-            If(twtpcon.ready & trascon.ready,
+            If((twtpcon.ready &trtpcon.ready) & trascon.ready,
                 [NextState("TRP"),
                 trpcon.valid.eq(1)]
             ),

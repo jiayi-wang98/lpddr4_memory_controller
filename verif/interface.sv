@@ -123,6 +123,20 @@ interface ahb_interface(input clk,rst);
     endclocking
 endinterface
 
+interface wishbone_interface(input clk,rst);
+    logic [31:0] wishbone_port_adr;
+	logic [255:0] wishbone_port_dat_w;
+	logic [255:0] wishbone_port_dat_r;
+	logic [31:0] wishbone_port_sel;
+	logic wishbone_port_cyc;
+	logic wishbone_port_stb;
+	logic wishbone_port_ack;
+	logic wishbone_port_we;
+	logic [2:0] wishbone_port_cti;
+	logic [1:0] wishbone_port_bte;
+	logic wishbone_port_err;
+endinterface
+
 interface native_interface(input clk,rst);
     logic native_cmd_valid;
 	logic native_cmd_ready;
@@ -145,28 +159,50 @@ interface native_interface(input clk,rst);
 endinterface
 
 interface litedram_interface(input clk,rst);
-    logic interface_bank0_valid;
-	logic interface_bank0_ready;
-	logic interface_bank0_we;
-	logic interface_bank0_mw;
-	logic [22:0] interface_bank0_addr;
-	logic interface_bank0_lock;
-	logic interface_bank0_wdata_ready;
-	logic interface_bank0_rdata_valid;
+    litedram_cmd_interface litedram_cmd_if_0(clk,rst);
+	litedram_cmd_interface litedram_cmd_if_1(clk,rst);
+	litedram_cmd_interface litedram_cmd_if_2(clk,rst);
+	litedram_cmd_interface litedram_cmd_if_3(clk,rst);
+	litedram_cmd_interface litedram_cmd_if_4(clk,rst);
+	litedram_cmd_interface litedram_cmd_if_5(clk,rst);
+	litedram_cmd_interface litedram_cmd_if_6(clk,rst);
+	litedram_cmd_interface litedram_cmd_if_7(clk,rst);
+	litedram_data_interface litedram_data_if(clk,rst);
 endinterface
 
-interface wishbone_interface(input clk,rst);
-    logic [31:0] wishbone_port_adr;
-	logic [255:0] wishbone_port_dat_w;
-	logic [255:0] wishbone_port_dat_r;
-	logic [31:0] wishbone_port_sel;
-	logic wishbone_port_cyc;
-	logic wishbone_port_stb;
-	logic wishbone_port_ack;
-	logic wishbone_port_we;
-	logic [2:0] wishbone_port_cti;
-	logic [1:0] wishbone_port_bte;
-	logic wishbone_port_err;
+interface litedram_cmd_interface(input clk,rst);
+    logic interface_bank_valid;
+	logic interface_bank_ready;
+	logic interface_bank_we;
+	logic interface_bank_mw;
+	logic [22:0] interface_bank_addr;
+	logic interface_bank_lock;
+	logic interface_bank_wdata_ready;
+	logic interface_bank_rdata_valid;
+	clocking drv_ck @(posedge clk);
+        default input #0.1 output #0.1;
+        output interface_bank_valid,interface_bank_we,interface_bank_mw,interface_bank_addr;
+        input interface_bank_ready,interface_bank_rdata_valid,interface_bank_wdata_ready,interface_bank_lock;
+    endclocking
+	clocking mon_ck @(posedge clk);
+        default input #0.1 output #0.1;
+        input interface_bank_valid,interface_bank_we,interface_bank_mw,interface_bank_addr,interface_bank_ready,interface_bank_rdata_valid,interface_bank_wdata_ready,interface_bank_lock;
+    endclocking
+endinterface
+
+interface litedram_data_interface(input clk,rst);
+    logic [255:0] interface_wdata;
+	logic [31:0] interface_wdata_we;
+	logic [255:0] interface_rdata;
+	clocking drv_ck @(posedge clk);
+        default input #0.1 output #0.1;
+        output interface_wdata,interface_wdata_we;
+        input interface_rdata;
+    endclocking
+	clocking mon_ck @(posedge clk);
+        default input #0.1 output #0.1;
+        input interface_wdata,interface_wdata_we,interface_rdata;
+    endclocking
 endinterface
 
 interface cmd_rw_interface(input clk,rst);
@@ -225,26 +261,38 @@ interface dfi_phase_interface(input clk,rst);
     	default input #0.1 output #0.1;
     	input address,bank,cas_n,cs_n,ras_n,we_n,mw,cke,odt,reset_n,act_n,wrdata,wrdata_en,wrdata_mask,rddata_en,rddata,rddata_valid;
   	endclocking
+	clocking drv_ck @(posedge clk);
+    	default input #0.1 output #0.1;
+    	output address,bank,cas_n,cs_n,ras_n,we_n,mw,cke,odt,reset_n,act_n,wrdata,wrdata_en,wrdata_mask,rddata_en,rddata,rddata_valid;
+  	endclocking
 endinterface
 
 interface dfi_lpddr4_interface(input clk,rst);
-    dfi_phase_lpddr4_interface dfi_phase0_lpddr4_interface_if(clk,rst);
-	dfi_phase_lpddr4_interface dfi_phase1_lpddr4_interface_if(clk,rst);
-	dfi_phase_lpddr4_interface dfi_phase2_lpddr4_interface_if(clk,rst);
-	dfi_phase_lpddr4_interface dfi_phase3_lpddr4_interface_if(clk,rst);
+    dfi_phase_lpddr4_interface dfi_phase0_lpddr4_if(clk,rst);
+	dfi_phase_lpddr4_interface dfi_phase1_lpddr4_if(clk,rst);
+	dfi_phase_lpddr4_interface dfi_phase2_lpddr4_if(clk,rst);
+	dfi_phase_lpddr4_interface dfi_phase3_lpddr4_if(clk,rst);
 endinterface
 
 interface dfi_phase_lpddr4_interface(input clk,rst);
-    logic [5:0] dfi_pN_ca;
-	logic dfi_pN_cs;
-	logic dfi_pN_cke;
-	logic dfi_pN_odt;
-	logic dfi_pN_reset_n;
-	logic dfi_pN_act_n;
-	logic [63:0] dfi_pN_wrdata;
-	logic dfi_pN_wrdata_en;
-	logic [7:0] dfi_pN_wrdata_mask;
-	logic dfi_pN_rddata_en;
-	logic [63:0] dfi_pN_rddata;
-	logic dfi_pN_rddata_valid;
+    logic [5:0] ca;
+	logic cs;
+	logic cke;
+	logic odt;
+	logic reset_n;
+	logic act_n;
+	logic [63:0] wrdata;
+	logic wrdata_en;
+	logic [7:0] wrdata_mask;
+	logic rddata_en;
+	logic [63:0] rddata;
+	logic rddata_valid;
+	clocking mon_ck @(posedge clk);
+    	default input #0.1 output #0.1;
+    	input ca,cs,cke,odt,reset_n,act_n,wrdata,wrdata_en,wrdata_mask,rddata_en,rddata,rddata_valid;
+  	endclocking
+	clocking drv_ck @(posedge clk);
+    	default input #0.1 output #0.1;
+    	output ca,cs,cke,odt,reset_n,act_n,wrdata,wrdata_en,wrdata_mask,rddata_en,rddata,rddata_valid;
+  	endclocking
 endinterface

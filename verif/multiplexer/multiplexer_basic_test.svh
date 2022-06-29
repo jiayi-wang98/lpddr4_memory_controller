@@ -132,6 +132,7 @@
   endclass: multiplexer_root_test
 
   class multiplexer_basic_virtual_sequence extends multiplexer_root_virtual_sequence;
+    int num_trans=200;
     `uvm_object_utils(multiplexer_basic_virtual_sequence)
     function new (string name = "multiplexer_basic_virtual_sequence");
       super.new(name);
@@ -142,28 +143,28 @@
       this.wait_cycles(10);
       fork
         `uvm_do_on_with(bm_cmd_seq, p_sequencer.bm_sqrs[0], 
-                        {ntrans== 500; bank_address==0;cmd_size==6;}
+                        {ntrans== num_trans; bank_address==0;}
                        )
         `uvm_do_on_with(bm_cmd_seq, p_sequencer.bm_sqrs[1], 
-                        {ntrans== 500; bank_address==1;cmd_size==6;}
+                        {ntrans== num_trans; bank_address==1;}
                        )
         `uvm_do_on_with(bm_cmd_seq, p_sequencer.bm_sqrs[2], 
-                        {ntrans== 500; bank_address==2;cmd_size==6;}
+                        {ntrans== num_trans; bank_address==2;}
                        )
         `uvm_do_on_with(bm_cmd_seq, p_sequencer.bm_sqrs[3], 
-                        {ntrans== 500; bank_address==3;cmd_size==6;}
+                        {ntrans== num_trans; bank_address==3;}
                        )
         `uvm_do_on_with(bm_cmd_seq, p_sequencer.bm_sqrs[4], 
-                        {ntrans== 500; bank_address==4;cmd_size==6;}
+                        {ntrans== num_trans; bank_address==4;}
                        )
         `uvm_do_on_with(bm_cmd_seq, p_sequencer.bm_sqrs[5], 
-                        {ntrans== 500; bank_address==5;cmd_size==6;}
+                        {ntrans== num_trans; bank_address==5;}
                        )
         `uvm_do_on_with(bm_cmd_seq, p_sequencer.bm_sqrs[6], 
-                        {ntrans== 500; bank_address==6;cmd_size==6;}
+                        {ntrans== num_trans; bank_address==6;}
                        )
         `uvm_do_on_with(bm_cmd_seq, p_sequencer.bm_sqrs[7], 
-                        {ntrans== 500; bank_address==7;cmd_size==6;}
+                        {ntrans== num_trans; bank_address==7;}
                        )
        
       join

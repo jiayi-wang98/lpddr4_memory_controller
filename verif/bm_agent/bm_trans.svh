@@ -23,20 +23,20 @@
     //constraint rst{reset==1;}
     //positive access time
     constraint col_cmd_num_cst{
-      col_address.size>0;
-      col_address.size<8;
+      col_address.size()>0;
+      col_address.size()<8;
     }
 
     //one col_address/rw one access
     
     constraint col_address_size_cst{
-      cas.size==(col_address.size+2);
-      ras.size==(col_address.size+2);
-      we.size==(col_address.size+2);
-      is_cmd.size==(col_address.size+2);
-      is_write.size==(col_address.size+2);
-      is_read.size==(col_address.size+2);
-      is_mw.size==(col_address.size+2);
+      cas.size()==(col_address.size()+2);
+      ras.size()==(col_address.size()+2);
+      we.size()==(col_address.size()+2);
+      is_cmd.size()==(col_address.size()+2);
+      is_write.size()==(col_address.size()+2);
+      is_read.size()==(col_address.size()+2);
+      is_mw.size()==(col_address.size()+2);
     }
     
     constraint bm_cmd_cst{

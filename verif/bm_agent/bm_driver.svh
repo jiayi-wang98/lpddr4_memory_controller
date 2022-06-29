@@ -2,6 +2,10 @@
   class bm_driver extends uvm_driver #(bm_trans);
     bit precharged=0;
     virtual cmd_rw_interface intf;
+    bit refresh_in_progress=0;
+    bit drive_in_progress=0;
+    bit begin_with_refresh=0;
+    bit [2:0] bank_address=0;
     //bit[2:0] bank_address;
     mailbox #(bm_trans) req_mb;
     mailbox #(bm_trans) rsp_mb;
@@ -12,11 +16,6 @@
       super.new(name, parent);
     endfunction
 
-    /*
-    function set_bank_address(int bank_id);
-      bank_address=bank_id;
-    endfunction
-    */
     function void set_interface(virtual cmd_rw_interface intf);
       if(intf == null)
         `uvm_error("GETVIF","cmd_rw_interface interface handle is NULL, please check if target interface has been intantiated")
@@ -26,6 +25,7 @@
 
     task run_phase(uvm_phase phase);
       fork
+       this.do_refresh();
        this.do_drive();
        this.do_reset();
       join
@@ -49,7 +49,7 @@
 
     task do_drive();
       bm_trans req, rsp;
-      @(negedge intf.rst);
+      wait(intf.rst===1'b0);
       forever begin
         seq_item_port.get_next_item(req);
         this.bm_write(req);
@@ -60,26 +60,35 @@
         precharged=req.with_autoprecharge;
       end
     endtask
+
+    task do_refresh();
+      forever begin
+        @(negedge intf.clk);
+        if(intf.mon_ck.refresh_req===1'b1) begin
+          wait(drive_in_progress==0);
+          refresh_in_progress=1;
+          @(posedge intf.clk);
+          intf.drv_ck.refresh_gnt<=1'b1;
+          `uvm_info("REFRESH IN", $sformatf("Bank %h into REFRESH",bank_address), UVM_HIGH)
+          @(negedge intf.clk);
+          wait(intf.mon_ck.refresh_req===1'b0);
+          intf.drv_ck.refresh_gnt<=1'b0;
+          refresh_in_progress=0;
+          begin_with_refresh=1;
+          `uvm_info("REFRESH OUT", $sformatf("Bank %h out of REFRESH",bank_address), UVM_HIGH)
+        end
+      end
+    endtask
   
     task bm_write(input bm_trans t);
-      bit begin_with_refresh=0;
-      @(negedge intf.clk);
-      if(intf.mon_ck.refresh_req) begin
-        @(posedge intf.clk);
-        intf.drv_ck.refresh_gnt<=1'b1;
-        `uvm_info("REFRESH IN", $sformatf("Bank %h into REFRESH",t.bank_address), UVM_HIGH)
-        @(negedge intf.clk);
-        wait(intf.mon_ck.refresh_req===1'b0);
-        intf.drv_ck.refresh_gnt<=1'b0;
-        `uvm_info("REFRESH OUT", $sformatf("Bank %h out of REFRESH",t.bank_address), UVM_HIGH)
-        begin_with_refresh=1;
-      end
-
+      bank_address=t.bank_address;
+      wait(refresh_in_progress==0);
+      drive_in_progress=1;
       for(int i=0;i<t.cas.size;i++) begin
         //drive precharge
         if(i==0) begin
-
           if((precharged==0)||(begin_with_refresh==1)) begin
+            begin_with_refresh=0;
             @(posedge intf.clk);
             intf.drv_ck.cmd_valid <= 1'b1;
             intf.drv_ck.cmd_payload_a<= 0;
@@ -199,6 +208,7 @@
         end
       end
       //tWTP
+      drive_in_progress=0;
       precharged=t.with_autoprecharge;
     endtask
     
