@@ -42,29 +42,18 @@
     endfunction
 
     task run_phase(uvm_phase phase);
-      this.do_data_compare();
+      fork
+        this.do_cmd_compare();
+        this.do_wdata_compare();
+        this.do_rdata_compare();
+      join
     endtask
 
-    task do_data_compare();
-      req_t im;
-      req_t om;
+    task do_wdata_compare();
       data_t im_w;
       data_t om_w;
-      data_t im_r;
-      data_t om_r;
-
+      
       forever begin
-        out_tlm_fifo.get(om);
-        in_tlm_fifo.get(im);
-        if(((om.we!= im.we) ||(om.mw!= im.mw))|| (om.address != im.address) ) begin
-          this.error_count++;
-          `uvm_error("CMD CMPFAIL", $sformatf("Compared failed! bank_machine out [we,mw,address]=[%d,%d,%0h] is not equal with [%d,%d,%0h]", im.we,im.mw,im.address, om.we,om.mw,om.address))
-        end
-        else begin
-          `uvm_info("CMD CMPSUCD", $sformatf("Compared success! bank_machine out [we,mw,address]=[%d,%d,%0h] is equal with input", im.we,im.mw,im.address), UVM_HIGH)
-        end
-        this.cmp_count++;
-
         out_tlm_fifo_wdata.get(om_w);
         in_tlm_fifo_wdata.get(im_w);
         if(om_w.we!= im_w.we) begin
@@ -75,7 +64,14 @@
           `uvm_info("WDATA CMPSUCD", $sformatf("Compared Success! write data valid=[%d] is equal", im_w.we), UVM_HIGH)
         end
         this.cmp_count++;
+      end
+    endtask
 
+    task do_rdata_compare();
+      data_t im_r;
+      data_t om_r;
+      
+      forever begin
         out_tlm_fifo_rdata.get(om_r);
         in_tlm_fifo_rdata.get(im_r);
         if(om_r.we!= im_r.we) begin
@@ -84,6 +80,24 @@
         end
         else begin
           `uvm_info("RDATA CMPSUCD", $sformatf("Compared Success! read data ready=[%d] is equal", im_r.we), UVM_HIGH)
+        end
+        this.cmp_count++;
+      end
+    endtask
+
+    task do_cmd_compare();
+      req_t im;
+      req_t om;
+      
+      forever begin
+        out_tlm_fifo.get(om);
+        in_tlm_fifo.get(im);
+        if(((om.we!= im.we) ||(om.mw!= im.mw))|| (om.address != im.address) ) begin
+          this.error_count++;
+          `uvm_error("CMD CMPFAIL", $sformatf("Compared failed! bank_machine out [we,mw,address]=[%d,%d,%0h,%0h] is not equal with [%d,%d,%0h,%0h]", im.we,im.mw,im.address[22:6],im.address[5:0], om.we,om.mw,om.address[22:6],om.address[5:0]))
+        end
+        else begin
+          `uvm_info("CMD CMPSUCD", $sformatf("Compared success! bank_machine out [we,mw,address]=[%d,%d,%0h,%0h] is equal with input", im.we,im.mw,im.address[22:6],im.address[5:0]), UVM_HIGH)
         end
         this.cmp_count++;
       end

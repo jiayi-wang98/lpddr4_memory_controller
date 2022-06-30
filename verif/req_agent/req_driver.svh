@@ -36,7 +36,7 @@
 
     task do_drive();
       req_trans req, rsp;
-      @(negedge intf.rst);
+      wait(intf.rst===1'b0);
       forever begin
         seq_item_port.get_next_item(req);
         this.req_write(req);
@@ -49,21 +49,21 @@
   
     task req_write(input req_trans t);
       foreach(t.col_address[i]) begin
-        @(posedge intf.clk);
+        @(intf.drv_ck);
         intf.drv_ck.interface_bank_valid <= 1'b1;
         intf.drv_ck.interface_bank_we<= t.we[i];
 	      intf.drv_ck.interface_bank_mw<= t.mw[i];
 	      intf.drv_ck.interface_bank_addr<= {t.row_address,t.col_address[i]};
-        @(negedge intf.clk);
-        wait(intf.mon_ck.interface_bank_ready === 'b1);
-        if(t.we[i]==0) `uvm_info(get_type_name(), $sformatf("REQ sent command READ at %0h ",{t.row_address,t.col_address[i]}), UVM_HIGH)
-        else if(t.mw[i]==0) `uvm_info(get_type_name(), $sformatf("REQ sent command WRITE at %0h ",{t.row_address,t.col_address[i]}), UVM_HIGH)
-        else `uvm_info(get_type_name(), $sformatf("REQ sent command MASKED_WRITE at %0h ",{t.row_address,t.col_address[i]}), UVM_HIGH)
+        while(!intf.drv_ck.interface_bank_ready) @(intf.drv_ck);
+        if(t.we[i]==0) `uvm_info(get_type_name(), $sformatf("REQ sent command READ at row 0x%0h, col 0x%0h0 ",t.row_address,t.col_address[i]), UVM_HIGH)
+        else if(t.mw[i]==0) `uvm_info(get_type_name(), $sformatf("REQ sent command WRITE at row 0x%0h, col 0x%0h0 ",t.row_address,t.col_address[i]), UVM_HIGH)
+        else `uvm_info(get_type_name(), $sformatf("REQ sent command MASKED_WRITE at row 0x%0h, col 0x%0h0 ",t.row_address,t.col_address[i]), UVM_HIGH)
+        repeat(t.idle_n) this.req_idle();
       end
     endtask
     
     task req_idle();
-      @(posedge intf.clk);
+      @(intf.drv_ck);
       intf.drv_ck.interface_bank_valid <= 0;
       intf.drv_ck.interface_bank_we<= 0;
 	    intf.drv_ck.interface_bank_mw<= 0;

@@ -26,78 +26,6 @@
       this.mon_trans();
     endtask
 
-    task update_row_status(cmd_t m);
-      req_t r;
-      case(m.cmd)
-        PRECHARGE: begin 
-          row_closed=1;
-        end
-        ACTIVATE: begin 
-          current_row=m.address;
-          row_closed=0;
-        end
-        COL_READ: begin
-          if(row_closed==1) `uvm_error("ROW NOT OPEN", "Illegal access with no rows open!")
-          r.t=$time;
-          r.we=m.we;
-          r.mw=m.mw;
-          r.address={current_row,m.address[9:4]};
-          mon_rw_cmd_port.write(r);
-          `uvm_info("BANK_MACHINE", $sformatf("Time %0t Monitored BM out cmd %s at address %h", m.t ,DDR_CMD[m.cmd],r.address), UVM_HIGH)
-        end
-        COL_READ_AP: begin
-          if(row_closed==1) `uvm_error("ROW NOT OPEN", "Illegal access with no rows open!")
-          r.t=$time;
-          r.we=m.we;
-          r.mw=m.mw;
-          r.address={current_row,m.address[9:4]};
-          mon_rw_cmd_port.write(r);
-          `uvm_info("BANK_MACHINE", $sformatf("Time %0t Monitored BM out cmd %s at address %h", m.t ,DDR_CMD[m.cmd],r.address), UVM_HIGH)
-          row_closed=1;
-        end
-        COL_WRITE: begin
-          if(row_closed==1) `uvm_error("ROW NOT OPEN", "Illegal access with no rows open!")
-          r.t=$time;
-          r.we=m.we;
-          r.mw=m.mw;
-          r.address={current_row,m.address[9:4]};
-          mon_rw_cmd_port.write(r);
-          `uvm_info("BANK_MACHINE", $sformatf("Time %0t Monitored BM out cmd %s at address %h", m.t ,DDR_CMD[m.cmd],r.address), UVM_HIGH)
-        end
-        COL_WRITE_AP: begin
-          if(row_closed==1) `uvm_error("ROW NOT OPEN", "Illegal access with no rows open!")
-          r.t=$time;
-          r.we=m.we;
-          r.mw=m.mw;
-          r.address={current_row,m.address[9:4]};
-          mon_rw_cmd_port.write(r);
-          `uvm_info("BANK_MACHINE", $sformatf("Time %0t Monitored BM out cmd %s at address %h", m.t ,DDR_CMD[m.cmd],r.address), UVM_HIGH)
-          row_closed=1;
-        end
-        MASKED_WRITE: begin
-          if(row_closed==1) `uvm_error("ROW NOT OPEN", "Illegal access with no rows open!")
-          r.t=$time;
-          r.we=m.we;
-          r.mw=m.mw;
-          r.address={current_row,m.address[9:4]};
-          mon_rw_cmd_port.write(r);
-          `uvm_info("BANK_MACHINE", $sformatf("Time %0t Monitored BM out cmd %s at address %h", m.t ,DDR_CMD[m.cmd],r.address), UVM_HIGH)
-        end
-        MASKED_WRITE_AP: begin
-          if(row_closed==1) `uvm_error("ROW NOT OPEN", "Illegal access with no rows open!")
-          r.t=$time;
-          r.we=m.we;
-          r.mw=m.mw;
-          r.address={current_row,m.address[9:4]};
-          mon_rw_cmd_port.write(r);
-          `uvm_info("BANK_MACHINE", $sformatf("Time %0t Monitored BM out cmd %s at address %h", m.t ,DDR_CMD[m.cmd],r.address), UVM_HIGH)
-          row_closed=1;
-        end
-        default:`uvm_error("COMMAND VIOLATION", $sformatf("Receive BM command %s",DDR_CMD[m.cmd]))
-      endcase
-    endtask
-
-
     task check_cycle(int cycle_interval,int cycle_cst,string cmd_a,string cmd_b,string timing_name);
       if(cycle_interval<cycle_cst) begin
         `uvm_error($sformatf("%s VIOLATION",timing_name), $sformatf("[SB]Time interval between %s and %s is %0d nCK < %s= %0d nCK.",cmd_b,cmd_a,cycle_interval, timing_name,cycle_cst))
@@ -343,8 +271,6 @@
         mon_cmd_port.write(m);
         `uvm_info(get_type_name(), $sformatf("Time %0t Monitored BM cmd %s at bank %h, address %h", m.t ,DDR_CMD[m.cmd],m.bank,m.address), UVM_HIGH)
 
-        //update row status
-        //this.update_row_status(m);
         //check timing
         this.check_bm_timing(m,m_last);
         m_last=m;
@@ -386,10 +312,12 @@
       case(m.cmd)
         PRECHARGE: begin 
           row_closed=1;
+          `uvm_info("BANK_MACHINE", $sformatf("[ROW CLOSE]Time %0t monitored PRECHARGE BANK %0d", m.t,m.bank), UVM_HIGH)
         end
         ACTIVATE: begin 
           current_row=m.address;
           row_closed=0;
+          `uvm_info("BANK_MACHINE", $sformatf("[ROW OPEN]Time %0t monitored ACTIVATE BANK %0d, row 0x%0h", m.t ,m.bank,m.address), UVM_HIGH)
         end
         COL_READ: begin
           if(row_closed==1) `uvm_error("ROW NOT OPEN", "Illegal access with no rows open!")
@@ -398,7 +326,7 @@
           r.mw=m.mw;
           r.address={current_row,m.address[9:4]};
           mon_rw_cmd_port.write(r);
-          `uvm_info("BANK_MACHINE", $sformatf("Time %0t Monitored BM out cmd %s at address 0x%h", m.t ,DDR_CMD[m.cmd],r.address), UVM_HIGH)
+          `uvm_info("BANK_MACHINE", $sformatf("Time %0t monitored %s BANK %0d, row 0x%0h ,col 0x%0h", m.t ,DDR_CMD[m.cmd],m.bank,current_row,m.address), UVM_HIGH)
         end
         COL_READ_AP: begin
           if(row_closed==1) `uvm_error("ROW NOT OPEN", "Illegal access with no rows open!")
@@ -407,8 +335,9 @@
           r.mw=m.mw;
           r.address={current_row,m.address[9:4]};
           mon_rw_cmd_port.write(r);
-          `uvm_info("BANK_MACHINE", $sformatf("Time %0t Monitored BM out cmd %s at address 0x%h", m.t ,DDR_CMD[m.cmd],r.address), UVM_HIGH)
+          `uvm_info("BANK_MACHINE", $sformatf("Time %0t monitored %s BANK %0d, row 0x%0h ,col 0x%0h", m.t ,DDR_CMD[m.cmd],m.bank,current_row,m.address), UVM_HIGH)
           row_closed=1;
+          `uvm_info("BANK_MACHINE", $sformatf("[ROW CLOSE]Time %0t monitored AutoPrecharge BANK %0d", m.t ,m.bank), UVM_HIGH)
         end
         COL_WRITE: begin
           if(row_closed==1) `uvm_error("ROW NOT OPEN", "Illegal access with no rows open!")
@@ -417,7 +346,7 @@
           r.mw=m.mw;
           r.address={current_row,m.address[9:4]};
           mon_rw_cmd_port.write(r);
-          `uvm_info("BANK_MACHINE", $sformatf("Time %0t Monitored BM out cmd %s at address 0x%h", m.t ,DDR_CMD[m.cmd],r.address), UVM_HIGH)
+          `uvm_info("BANK_MACHINE", $sformatf("Time %0t monitored %s BANK %0d, row 0x%0h ,col 0x%0h", m.t ,DDR_CMD[m.cmd],m.bank,current_row,m.address), UVM_HIGH)
         end
         COL_WRITE_AP: begin
           if(row_closed==1) `uvm_error("ROW NOT OPEN", "Illegal access with no rows open!")
@@ -426,8 +355,9 @@
           r.mw=m.mw;
           r.address={current_row,m.address[9:4]};
           mon_rw_cmd_port.write(r);
-          `uvm_info("BANK_MACHINE", $sformatf("Time %0t Monitored BM out cmd %s at address 0x%h", m.t ,DDR_CMD[m.cmd],r.address), UVM_HIGH)
+          `uvm_info("BANK_MACHINE", $sformatf("Time %0t monitored %s BANK %0d, row 0x%0h ,col 0x%0h", m.t ,DDR_CMD[m.cmd],m.bank,current_row,m.address), UVM_HIGH)
           row_closed=1;
+          `uvm_info("BANK_MACHINE", $sformatf("[ROW CLOSE]Time %0t monitored AutoPrecharge BANK %0d", m.t ,m.bank), UVM_HIGH)
         end
         MASKED_WRITE: begin
           if(row_closed==1) `uvm_error("ROW NOT OPEN", "Illegal access with no rows open!")
@@ -436,7 +366,7 @@
           r.mw=m.mw;
           r.address={current_row,m.address[9:4]};
           mon_rw_cmd_port.write(r);
-          `uvm_info("BANK_MACHINE", $sformatf("Time %0t Monitored BM out cmd %s at address 0x%h", m.t ,DDR_CMD[m.cmd],r.address), UVM_HIGH)
+          `uvm_info("BANK_MACHINE", $sformatf("Time %0t monitored %s BANK %0d, row 0x%0h ,col 0x%0h", m.t ,DDR_CMD[m.cmd],m.bank,current_row,m.address), UVM_HIGH)
         end
         MASKED_WRITE_AP: begin
           if(row_closed==1) `uvm_error("ROW NOT OPEN", "Illegal access with no rows open!")
@@ -445,8 +375,9 @@
           r.mw=m.mw;
           r.address={current_row,m.address[9:4]};
           mon_rw_cmd_port.write(r);
-          `uvm_info("BANK_MACHINE", $sformatf("Time %0t Monitored BM out cmd %s at address 0x%h", m.t ,DDR_CMD[m.cmd],r.address), UVM_HIGH)
+          `uvm_info("BANK_MACHINE", $sformatf("Time %0t monitored %s BANK %0d, row 0x%0h ,col 0x%0h", m.t ,DDR_CMD[m.cmd],m.bank,current_row,m.address), UVM_HIGH)
           row_closed=1;
+          `uvm_info("BANK_MACHINE", $sformatf("[ROW CLOSE]Time %0t monitored AutoPrecharge BANK %0d", m.t ,m.bank), UVM_HIGH)
         end
         default:`uvm_error("COMMAND VIOLATION", $sformatf("Receive BM command %s",DDR_CMD[m.cmd]))
       endcase
@@ -670,7 +601,7 @@
       m_last.cmd=ERROR_1;
 
       forever begin
-        @(posedge intf.clk iff (intf.mon_ck.cmd_valid==='b1 && intf.mon_ck.cmd_ready==='b1));
+        @(intf.mon_ck iff (intf.mon_ck.cmd_valid==='b1 && intf.mon_ck.cmd_ready==='b1));
         m.cas = intf.mon_ck.cmd_payload_cas;
         m.ras = intf.mon_ck.cmd_payload_ras;
         m.we = intf.mon_ck.cmd_payload_we;
@@ -696,7 +627,7 @@
         m.bank=intf.mon_ck.cmd_payload_ba;
         m.t=$time;
         //mon_cmd_port.write(m);
-        `uvm_info(get_type_name(), $sformatf("Time %0t Monitored BM cmd %s at bank %h, address %h", m.t ,DDR_CMD[m.cmd],m.bank,m.address), UVM_HIGH)
+        //`uvm_info(get_type_name(), $sformatf("Time %0t Monitored BM cmd %s at bank %h, address %h", m.t,DDR_CMD[m.cmd],m.bank,m.address), UVM_HIGH)
 
         //update row status
         this.update_row_status(m);

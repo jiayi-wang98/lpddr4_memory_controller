@@ -45,15 +45,15 @@
           if(m.we==0) begin
             d.we=0;
             mon_rdata_port.write(d);
-            `uvm_info(get_type_name(), $sformatf("Time %0t Monitored Crossbar cmd READ at address %h", m.t,m.address), UVM_HIGH)
+            `uvm_info(get_type_name(), $sformatf("Time %0t Monitored Crossbar cmd READ at row 0x%0h, col 0x%0h0", m.t,m.address[22:6],m.address[5:0]), UVM_HIGH)
           end else if(m.mw==0) begin
             d.we=1;
             mon_wdata_port.write(d);
-            `uvm_info(get_type_name(), $sformatf("Time %0t Monitored Crossbar cmd WRITE at address %h", m.t,m.address), UVM_HIGH)
+            `uvm_info(get_type_name(), $sformatf("Time %0t Monitored Crossbar cmd WRITE at row 0x%0h, col 0x%0h0", m.t,m.address[22:6],m.address[5:0]), UVM_HIGH)
           end else begin
             d.we=1;
             mon_wdata_port.write(d);
-            `uvm_info(get_type_name(), $sformatf("Time %0t Monitored Crossbar cmd MASKED_WRITE at address %h", m.t,m.address), UVM_HIGH)
+            `uvm_info(get_type_name(), $sformatf("Time %0t Monitored Crossbar cmd MASKED_WRITE at row 0x%0h, col 0x%0h0", m.t,m.address[22:6],m.address[5:0]), UVM_HIGH)
           end
         end
 

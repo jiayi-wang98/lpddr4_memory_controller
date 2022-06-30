@@ -49,23 +49,27 @@ wire cmd_buffer_lookahead_source_last;
 wire cmd_buffer_lookahead_source_payload_we;
 wire cmd_buffer_lookahead_source_payload_mw;
 wire [22:0] cmd_buffer_lookahead_source_payload_addr;
+wire cmd_buffer_lookahead_re;
+reg cmd_buffer_lookahead_readable = 1'd0;
 wire cmd_buffer_lookahead_syncfifo_we;
 wire cmd_buffer_lookahead_syncfifo_writable;
 wire cmd_buffer_lookahead_syncfifo_re;
 wire cmd_buffer_lookahead_syncfifo_readable;
 wire [26:0] cmd_buffer_lookahead_syncfifo_din;
 wire [26:0] cmd_buffer_lookahead_syncfifo_dout;
-reg [3:0] cmd_buffer_lookahead_level = 4'd0;
+reg [1:0] cmd_buffer_lookahead_level0 = 2'd0;
 reg cmd_buffer_lookahead_replace = 1'd0;
-reg [2:0] cmd_buffer_lookahead_produce = 3'd0;
-reg [2:0] cmd_buffer_lookahead_consume = 3'd0;
-reg [2:0] cmd_buffer_lookahead_wrport_adr;
+reg cmd_buffer_lookahead_produce = 1'd0;
+reg cmd_buffer_lookahead_consume = 1'd0;
+reg cmd_buffer_lookahead_wrport_adr;
 wire [26:0] cmd_buffer_lookahead_wrport_dat_r;
 wire cmd_buffer_lookahead_wrport_we;
 wire [26:0] cmd_buffer_lookahead_wrport_dat_w;
 wire cmd_buffer_lookahead_do_read;
-wire [2:0] cmd_buffer_lookahead_rdport_adr;
+wire cmd_buffer_lookahead_rdport_adr;
 wire [26:0] cmd_buffer_lookahead_rdport_dat_r;
+wire cmd_buffer_lookahead_rdport_re;
+wire [1:0] cmd_buffer_lookahead_level1;
 wire cmd_buffer_lookahead_fifo_in_payload_we;
 wire cmd_buffer_lookahead_fifo_in_payload_mw;
 wire [22:0] cmd_buffer_lookahead_fifo_in_payload_addr;
@@ -97,28 +101,32 @@ reg row_open;
 reg row_close;
 reg row_col_n_addr_sel;
 wire tccdmwcon_valid;
-(* no_retiming = "true" *) reg tccdmwcon_ready = 1'd0;
+(* no_retiming = "true" *) reg tccdmwcon_ready = 1'd1;
 reg [7:0] tccdmwcon_count = 8'd0;
 wire trtpcon_valid;
-(* no_retiming = "true" *) reg trtpcon_ready = 1'd0;
+(* no_retiming = "true" *) reg trtpcon_ready = 1'd1;
 reg [7:0] trtpcon_count = 8'd0;
 wire twtpcon_valid;
-(* no_retiming = "true" *) reg twtpcon_ready = 1'd0;
+(* no_retiming = "true" *) reg twtpcon_ready = 1'd1;
 reg [7:0] twtpcon_count = 8'd0;
 wire trccon_valid;
-(* no_retiming = "true" *) reg trccon_ready = 1'd0;
+(* no_retiming = "true" *) reg trccon_ready = 1'd1;
 reg [7:0] trccon_count = 8'd0;
 wire trascon_valid;
-(* no_retiming = "true" *) reg trascon_ready = 1'd0;
+(* no_retiming = "true" *) reg trascon_ready = 1'd1;
 reg [7:0] trascon_count = 8'd0;
 reg trpcon_valid;
-(* no_retiming = "true" *) reg trpcon_ready = 1'd0;
+(* no_retiming = "true" *) reg trpcon_ready = 1'd1;
 reg [7:0] trpcon_count = 8'd0;
 reg trcdcon_valid;
-(* no_retiming = "true" *) reg trcdcon_ready = 1'd0;
+(* no_retiming = "true" *) reg trcdcon_ready = 1'd1;
 reg [7:0] trcdcon_count = 8'd0;
 reg [2:0] state = 3'd0;
 reg [2:0] next_state;
+reg req_rdata_valid_next_value0;
+reg req_rdata_valid_next_value_ce0;
+reg req_wdata_ready_next_value1;
+reg req_wdata_ready_next_value_ce1;
 
 // synthesis translate_off
 reg dummy_s;
@@ -185,19 +193,21 @@ assign cmd_buffer_lookahead_fifo_in_last = cmd_buffer_lookahead_sink_last;
 assign cmd_buffer_lookahead_fifo_in_payload_we = cmd_buffer_lookahead_sink_payload_we;
 assign cmd_buffer_lookahead_fifo_in_payload_mw = cmd_buffer_lookahead_sink_payload_mw;
 assign cmd_buffer_lookahead_fifo_in_payload_addr = cmd_buffer_lookahead_sink_payload_addr;
-assign cmd_buffer_lookahead_source_valid = cmd_buffer_lookahead_syncfifo_readable;
+assign cmd_buffer_lookahead_source_valid = cmd_buffer_lookahead_readable;
 assign cmd_buffer_lookahead_source_first = cmd_buffer_lookahead_fifo_out_first;
 assign cmd_buffer_lookahead_source_last = cmd_buffer_lookahead_fifo_out_last;
 assign cmd_buffer_lookahead_source_payload_we = cmd_buffer_lookahead_fifo_out_payload_we;
 assign cmd_buffer_lookahead_source_payload_mw = cmd_buffer_lookahead_fifo_out_payload_mw;
 assign cmd_buffer_lookahead_source_payload_addr = cmd_buffer_lookahead_fifo_out_payload_addr;
-assign cmd_buffer_lookahead_syncfifo_re = cmd_buffer_lookahead_source_ready;
+assign cmd_buffer_lookahead_re = cmd_buffer_lookahead_source_ready;
+assign cmd_buffer_lookahead_syncfifo_re = (cmd_buffer_lookahead_syncfifo_readable & ((~cmd_buffer_lookahead_readable) | cmd_buffer_lookahead_re));
+assign cmd_buffer_lookahead_level1 = (cmd_buffer_lookahead_level0 + cmd_buffer_lookahead_readable);
 
 // synthesis translate_off
 reg dummy_d_2;
 // synthesis translate_on
 always @(*) begin
-	cmd_buffer_lookahead_wrport_adr <= 3'd0;
+	cmd_buffer_lookahead_wrport_adr <= 1'd0;
 	if (cmd_buffer_lookahead_replace) begin
 		cmd_buffer_lookahead_wrport_adr <= (cmd_buffer_lookahead_produce - 1'd1);
 	end else begin
@@ -212,16 +222,15 @@ assign cmd_buffer_lookahead_wrport_we = (cmd_buffer_lookahead_syncfifo_we & (cmd
 assign cmd_buffer_lookahead_do_read = (cmd_buffer_lookahead_syncfifo_readable & cmd_buffer_lookahead_syncfifo_re);
 assign cmd_buffer_lookahead_rdport_adr = cmd_buffer_lookahead_consume;
 assign cmd_buffer_lookahead_syncfifo_dout = cmd_buffer_lookahead_rdport_dat_r;
-assign cmd_buffer_lookahead_syncfifo_writable = (cmd_buffer_lookahead_level != 4'd8);
-assign cmd_buffer_lookahead_syncfifo_readable = (cmd_buffer_lookahead_level != 1'd0);
+assign cmd_buffer_lookahead_rdport_re = cmd_buffer_lookahead_do_read;
+assign cmd_buffer_lookahead_syncfifo_writable = (cmd_buffer_lookahead_level0 != 2'd2);
+assign cmd_buffer_lookahead_syncfifo_readable = (cmd_buffer_lookahead_level0 != 1'd0);
 assign cmd_buffer_sink_ready = ((~cmd_buffer_source_valid) | cmd_buffer_source_ready);
 
 // synthesis translate_off
 reg dummy_d_3;
 // synthesis translate_on
 always @(*) begin
-	req_wdata_ready <= 1'd0;
-	req_rdata_valid <= 1'd0;
 	refresh_gnt <= 1'd0;
 	cmd_valid <= 1'd0;
 	cmd_payload_cas <= 1'd0;
@@ -232,16 +241,24 @@ always @(*) begin
 	cmd_payload_is_write <= 1'd0;
 	cmd_payload_is_mw <= 1'd0;
 	row_open <= 1'd0;
-	row_close <= 1'd0;
+	row_close <= 1'd1;
 	row_col_n_addr_sel <= 1'd0;
 	trpcon_valid <= 1'd0;
 	trcdcon_valid <= 1'd0;
 	next_state <= 3'd0;
+	req_rdata_valid_next_value0 <= 1'd0;
+	req_rdata_valid_next_value_ce0 <= 1'd0;
+	req_wdata_ready_next_value1 <= 1'd0;
+	req_wdata_ready_next_value_ce1 <= 1'd0;
 	trpcon_valid <= ((cmd_valid & cmd_ready) & row_open);
 	trcdcon_valid <= ((cmd_valid & cmd_ready) & row_open);
 	next_state <= state;
 	case (state)
 		1'd1: begin
+			req_rdata_valid_next_value0 <= 1'd0;
+			req_rdata_valid_next_value_ce0 <= 1'd1;
+			req_wdata_ready_next_value1 <= 1'd0;
+			req_wdata_ready_next_value_ce1 <= 1'd1;
 			if (((twtpcon_ready & trtpcon_ready) & trascon_ready)) begin
 				cmd_valid <= 1'd1;
 				if (cmd_ready) begin
@@ -249,12 +266,17 @@ always @(*) begin
 					trpcon_valid <= 1'd1;
 				end
 				cmd_payload_ras <= 1'd1;
+				cmd_payload_cas <= 1'd0;
 				cmd_payload_we <= 1'd1;
 				cmd_payload_is_cmd <= 1'd1;
 			end
 			row_close <= 1'd1;
 		end
 		2'd2: begin
+			req_rdata_valid_next_value0 <= 1'd0;
+			req_rdata_valid_next_value_ce0 <= 1'd1;
+			req_wdata_ready_next_value1 <= 1'd0;
+			req_wdata_ready_next_value_ce1 <= 1'd1;
 			if (((twtpcon_ready & trtpcon_ready) & trascon_ready)) begin
 				next_state <= 3'd5;
 				trpcon_valid <= 1'd1;
@@ -262,8 +284,13 @@ always @(*) begin
 			row_close <= 1'd1;
 		end
 		2'd3: begin
+			req_rdata_valid_next_value0 <= 1'd0;
+			req_rdata_valid_next_value_ce0 <= 1'd1;
+			req_wdata_ready_next_value1 <= 1'd0;
+			req_wdata_ready_next_value_ce1 <= 1'd1;
 			if (trccon_ready) begin
 				row_col_n_addr_sel <= 1'd1;
+				row_close <= 1'd0;
 				row_open <= 1'd1;
 				cmd_valid <= 1'd1;
 				cmd_payload_is_cmd <= 1'd1;
@@ -275,6 +302,10 @@ always @(*) begin
 			end
 		end
 		3'd4: begin
+			req_rdata_valid_next_value0 <= 1'd0;
+			req_rdata_valid_next_value_ce0 <= 1'd1;
+			req_wdata_ready_next_value1 <= 1'd0;
+			req_wdata_ready_next_value_ce1 <= 1'd1;
 			if (twtpcon_ready) begin
 				refresh_gnt <= 1'd1;
 			end
@@ -285,22 +316,37 @@ always @(*) begin
 			end
 		end
 		3'd5: begin
+			req_rdata_valid_next_value0 <= 1'd0;
+			req_rdata_valid_next_value_ce0 <= 1'd1;
+			req_wdata_ready_next_value1 <= 1'd0;
+			req_wdata_ready_next_value_ce1 <= 1'd1;
+			row_close <= 1'd0;
 			trpcon_valid <= 1'd0;
 			if (trpcon_ready) begin
 				next_state <= 2'd3;
 			end
 		end
 		3'd6: begin
+			req_rdata_valid_next_value0 <= 1'd0;
+			req_rdata_valid_next_value_ce0 <= 1'd1;
+			req_wdata_ready_next_value1 <= 1'd0;
+			req_wdata_ready_next_value_ce1 <= 1'd1;
+			row_close <= 1'd0;
 			trcdcon_valid <= 1'd0;
 			if (trcdcon_ready) begin
 				next_state <= 1'd0;
 			end
 		end
 		default: begin
+			req_rdata_valid_next_value0 <= 1'd0;
+			req_rdata_valid_next_value_ce0 <= 1'd1;
+			req_wdata_ready_next_value1 <= 1'd0;
+			req_wdata_ready_next_value_ce1 <= 1'd1;
 			if (refresh_req) begin
 				next_state <= 3'd4;
 			end else begin
 				if (cmd_buffer_source_valid) begin
+					row_close <= 1'd0;
 					if (row_opened) begin
 						if (row_hit) begin
 							if (cmd_buffer_source_payload_we) begin
@@ -308,33 +354,54 @@ always @(*) begin
 									if (tccdmwcon_ready) begin
 										cmd_valid <= 1'd1;
 										cmd_payload_is_mw <= 1'd1;
-										req_wdata_ready <= cmd_ready;
+										if (cmd_ready) begin
+											req_wdata_ready_next_value1 <= 1'd1;
+											req_wdata_ready_next_value_ce1 <= 1'd1;
+										end else begin
+											req_wdata_ready_next_value1 <= 1'd0;
+											req_wdata_ready_next_value_ce1 <= 1'd1;
+										end
 										cmd_payload_is_write <= 1'd1;
+										cmd_payload_cas <= 1'd1;
 										cmd_payload_we <= 1'd1;
 									end else begin
-										req_wdata_ready <= 1'd0;
+										req_wdata_ready_next_value1 <= 1'd0;
+										req_wdata_ready_next_value_ce1 <= 1'd1;
 									end
 								end else begin
 									cmd_valid <= 1'd1;
 									cmd_payload_is_mw <= 1'd0;
-									req_wdata_ready <= cmd_ready;
+									if (cmd_ready) begin
+										req_wdata_ready_next_value1 <= 1'd1;
+										req_wdata_ready_next_value_ce1 <= 1'd1;
+									end else begin
+										req_wdata_ready_next_value1 <= 1'd0;
+										req_wdata_ready_next_value_ce1 <= 1'd1;
+									end
 									cmd_payload_is_write <= 1'd1;
 									cmd_payload_we <= 1'd1;
+									cmd_payload_cas <= 1'd1;
 								end
 							end else begin
 								cmd_valid <= 1'd1;
-								req_rdata_valid <= cmd_ready;
+								if (cmd_ready) begin
+									req_rdata_valid_next_value0 <= 1'd1;
+									req_rdata_valid_next_value_ce0 <= 1'd1;
+								end else begin
+									req_rdata_valid_next_value0 <= 1'd0;
+									req_rdata_valid_next_value_ce0 <= 1'd1;
+								end
 								cmd_payload_is_read <= 1'd1;
+								cmd_payload_cas <= 1'd1;
 							end
-							cmd_payload_cas <= 1'd1;
-							if ((cmd_ready & auto_precharge)) begin
+							if (((cmd_valid & cmd_ready) & auto_precharge)) begin
 								next_state <= 2'd2;
 							end
 						end else begin
 							next_state <= 1'd1;
 						end
 					end else begin
-						next_state <= 2'd3;
+						next_state <= 1'd1;
 					end
 				end
 			end
@@ -354,6 +421,13 @@ always @(posedge sys_clk) begin
 			row <= cmd_buffer_source_payload_addr[22:6];
 		end
 	end
+	if (cmd_buffer_lookahead_syncfifo_re) begin
+		cmd_buffer_lookahead_readable <= 1'd1;
+	end else begin
+		if (cmd_buffer_lookahead_re) begin
+			cmd_buffer_lookahead_readable <= 1'd0;
+		end
+	end
 	if (((cmd_buffer_lookahead_syncfifo_we & cmd_buffer_lookahead_syncfifo_writable) & (~cmd_buffer_lookahead_replace))) begin
 		cmd_buffer_lookahead_produce <= (cmd_buffer_lookahead_produce + 1'd1);
 	end
@@ -362,11 +436,11 @@ always @(posedge sys_clk) begin
 	end
 	if (((cmd_buffer_lookahead_syncfifo_we & cmd_buffer_lookahead_syncfifo_writable) & (~cmd_buffer_lookahead_replace))) begin
 		if ((~cmd_buffer_lookahead_do_read)) begin
-			cmd_buffer_lookahead_level <= (cmd_buffer_lookahead_level + 1'd1);
+			cmd_buffer_lookahead_level0 <= (cmd_buffer_lookahead_level0 + 1'd1);
 		end
 	end else begin
 		if (cmd_buffer_lookahead_do_read) begin
-			cmd_buffer_lookahead_level <= (cmd_buffer_lookahead_level - 1'd1);
+			cmd_buffer_lookahead_level0 <= (cmd_buffer_lookahead_level0 - 1'd1);
 		end
 	end
 	if (((~cmd_buffer_source_valid) | cmd_buffer_source_ready)) begin
@@ -483,29 +557,39 @@ always @(posedge sys_clk) begin
 		end
 	end
 	state <= next_state;
+	if (req_rdata_valid_next_value_ce0) begin
+		req_rdata_valid <= req_rdata_valid_next_value0;
+	end
+	if (req_wdata_ready_next_value_ce1) begin
+		req_wdata_ready <= req_wdata_ready_next_value1;
+	end
 	if (sys_rst) begin
-		cmd_buffer_lookahead_level <= 4'd0;
-		cmd_buffer_lookahead_produce <= 3'd0;
-		cmd_buffer_lookahead_consume <= 3'd0;
+		req_wdata_ready <= 1'd0;
+		req_rdata_valid <= 1'd0;
+		cmd_buffer_lookahead_readable <= 1'd0;
+		cmd_buffer_lookahead_level0 <= 2'd0;
+		cmd_buffer_lookahead_produce <= 1'd0;
+		cmd_buffer_lookahead_consume <= 1'd0;
 		cmd_buffer_source_valid <= 1'd0;
 		cmd_buffer_source_payload_we <= 1'd0;
 		cmd_buffer_source_payload_mw <= 1'd0;
 		cmd_buffer_source_payload_addr <= 23'd0;
 		row <= 17'd0;
 		row_opened <= 1'd0;
-		tccdmwcon_ready <= 1'd0;
-		trtpcon_ready <= 1'd0;
-		twtpcon_ready <= 1'd0;
-		trccon_ready <= 1'd0;
-		trascon_ready <= 1'd0;
-		trpcon_ready <= 1'd0;
-		trcdcon_ready <= 1'd0;
+		tccdmwcon_ready <= 1'd1;
+		trtpcon_ready <= 1'd1;
+		twtpcon_ready <= 1'd1;
+		trccon_ready <= 1'd1;
+		trascon_ready <= 1'd1;
+		trpcon_ready <= 1'd1;
+		trcdcon_ready <= 1'd1;
 		state <= 3'd0;
 	end
 end
 
-reg [26:0] storage[0:7];
+reg [26:0] storage[0:1];
 reg [26:0] memdat;
+reg [26:0] memdat_1;
 always @(posedge sys_clk) begin
 	if (cmd_buffer_lookahead_wrport_we)
 		storage[cmd_buffer_lookahead_wrport_adr] <= cmd_buffer_lookahead_wrport_dat_w;
@@ -513,9 +597,11 @@ always @(posedge sys_clk) begin
 end
 
 always @(posedge sys_clk) begin
+	if (cmd_buffer_lookahead_rdport_re)
+		memdat_1 <= storage[cmd_buffer_lookahead_rdport_adr];
 end
 
 assign cmd_buffer_lookahead_wrport_dat_r = memdat;
-assign cmd_buffer_lookahead_rdport_dat_r = storage[cmd_buffer_lookahead_rdport_adr];
+assign cmd_buffer_lookahead_rdport_dat_r = memdat_1;
 
 endmodule

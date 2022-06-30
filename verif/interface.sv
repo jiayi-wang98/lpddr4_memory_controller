@@ -230,6 +230,12 @@ interface cmd_rw_interface(input clk,rst);
         default input #0.1 output #0.1;
         input refresh_gnt,refresh_req,cmd_valid,cmd_payload_a,cmd_payload_ba,cmd_payload_cas,cmd_payload_ras,cmd_payload_we,cmd_payload_is_cmd,cmd_payload_is_read,cmd_payload_is_write,cmd_payload_is_mw,cmd_ready;
     endclocking
+
+	clocking rsp_ck @(posedge clk);
+        default input #0.1 output #0.1;
+        input cmd_valid;
+		output cmd_ready;
+    endclocking
 endinterface
 
 interface dfi_interface(input clk,rst);

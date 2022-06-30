@@ -12,6 +12,7 @@ package bank_machine_test_pkg;
     `include "req_monitor.svh"
     `include "req_agent.svh"
 
+    `include "bm_responder.svh"
     `include "bank_machine_checker.svh"
     `include "bank_machine_virtual_sequencer.svh"
     `include "bank_machine_env.svh"

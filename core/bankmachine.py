@@ -125,11 +125,11 @@ class BankMachine(Module):
         slicer = _AddressSlicer(settings.geom.colbits, address_align)
 
         # Row tracking -----------------------------------------------------------------------------
-        row        = Signal(settings.geom.rowbits)
-        row_opened = Signal()
-        row_hit    = Signal()
-        row_open   = Signal()
-        row_close  = Signal()
+        row        = Signal(settings.geom.rowbits,reset=0)
+        row_opened = Signal(reset=0)
+        row_hit    = Signal(reset=0)
+        row_open   = Signal(reset=0)
+        row_close  = Signal(reset=1)
         self.comb += row_hit.eq(row == slicer.row(cmd_buffer.source.addr))
         self.sync += \
             If(row_close,
@@ -140,7 +140,7 @@ class BankMachine(Module):
             )
 
         # Address generation -----------------------------------------------------------------------
-        row_col_n_addr_sel = Signal()
+        row_col_n_addr_sel = Signal(reset=0)
         self.comb += [
             #cmd.ba.eq(self.n),
             cmd.ba.eq(n),
@@ -195,9 +195,12 @@ class BankMachine(Module):
         # Note: tRRD, tFAW, tCCD, tWTR timings are enforced by the multiplexer
         self.submodules.fsm = fsm = FSM()
         fsm.act("REGULAR",
+            NextValue(req.rdata_valid,0),
+            NextValue(req.wdata_ready,0),
             If(refresh_req,
                 NextState("REFRESH")
             ).Elif(cmd_buffer.source.valid,
+                row_close.eq(0),
                 If(row_opened,
                     If(row_hit,
                         If(cmd_buffer.source.we, #write/masked-write
@@ -205,38 +208,42 @@ class BankMachine(Module):
                                 If(tccdmwcon.ready, #tCCDMW met
                                 cmd.valid.eq(1),
                                 cmd.is_mw.eq(1),
-                                req.wdata_ready.eq(cmd.ready),
+                                If(cmd.ready,NextValue(req.wdata_ready,1)).Else(NextValue(req.wdata_ready,0)),
                                 cmd.is_write.eq(1),
+                                cmd.cas.eq(1),
                                 cmd.we.eq(1),
                                 ).Else(
-                                    req.wdata_ready.eq(0)
+                                    NextValue(req.wdata_ready,0)
                                 )
                             ).Else( #write
                                 cmd.valid.eq(1),
                                 cmd.is_mw.eq(0),
-                                req.wdata_ready.eq(cmd.ready),
+                                If(cmd.ready,NextValue(req.wdata_ready,1)).Else(NextValue(req.wdata_ready,0)),
                                 cmd.is_write.eq(1),
-                                cmd.we.eq(1)
+                                cmd.we.eq(1),
+                                cmd.cas.eq(1)
                             )
                         #read
                         ).Else( 
                             cmd.valid.eq(1),
-                            req.rdata_valid.eq(cmd.ready),
-                            cmd.is_read.eq(1)
+                            If(cmd.ready,NextValue(req.rdata_valid,1)).Else(NextValue(req.rdata_valid,0)),
+                            cmd.is_read.eq(1),
+                            cmd.cas.eq(1)
                         ),
-                        cmd.cas.eq(1),
-                        If(cmd.ready & auto_precharge,
+                        If((cmd.valid& cmd.ready) & auto_precharge,
                            NextState("AUTOPRECHARGE")
                         )
                     ).Else(  # row_opened & ~row_hit
                         NextState("PRECHARGE")
                     )
                 ).Else(  # ~row_opened
-                    NextState("ACTIVATE")
+                    NextState("PRECHARGE")
                 )
             )
         )
         fsm.act("PRECHARGE",
+            NextValue(req.rdata_valid,0),
+            NextValue(req.wdata_ready,0),
             # Note: we are presenting the column address, A10 is always low
             If((twtpcon.ready & trtpcon.ready) & trascon.ready,
                 cmd.valid.eq(1),
@@ -245,12 +252,15 @@ class BankMachine(Module):
                     trpcon.valid.eq(1)]
                 ),
                 cmd.ras.eq(1),
+                cmd.cas.eq(0),
                 cmd.we.eq(1),
                 cmd.is_cmd.eq(1)
             ),
             row_close.eq(1)
         )
         fsm.act("AUTOPRECHARGE",
+            NextValue(req.rdata_valid,0),
+            NextValue(req.wdata_ready,0),
             If((twtpcon.ready &trtpcon.ready) & trascon.ready,
                 [NextState("TRP"),
                 trpcon.valid.eq(1)]
@@ -258,8 +268,11 @@ class BankMachine(Module):
             row_close.eq(1)
         )
         fsm.act("ACTIVATE",
+            NextValue(req.rdata_valid,0),
+            NextValue(req.wdata_ready,0),
             If(trccon.ready,
                 row_col_n_addr_sel.eq(1),
+                row_close.eq(0),
                 row_open.eq(1),
                 cmd.valid.eq(1),
                 cmd.is_cmd.eq(1),
@@ -271,6 +284,8 @@ class BankMachine(Module):
             )
         )
         fsm.act("REFRESH",
+            NextValue(req.rdata_valid,0),
+            NextValue(req.wdata_ready,0),
             If(twtpcon.ready,
                 refresh_gnt.eq(1),
             ),
@@ -281,12 +296,18 @@ class BankMachine(Module):
             )
         )
         fsm.act("TRP",
+            NextValue(req.rdata_valid,0),
+            NextValue(req.wdata_ready,0),
+            row_close.eq(0),
             trpcon.valid.eq(0),
             If(trpcon.ready,
                 NextState("ACTIVATE") 
             )
         )
         fsm.act("TRCD",
+            NextValue(req.rdata_valid,0),
+            NextValue(req.wdata_ready,0),
+            row_close.eq(0),
             trcdcon.valid.eq(0),
             If(trcdcon.ready,
                 NextState("REGULAR")

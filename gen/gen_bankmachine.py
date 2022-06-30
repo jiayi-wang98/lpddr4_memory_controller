@@ -35,8 +35,8 @@ def main():
         )
 
         default_controller_settings = dict(
-            cmd_buffer_depth    = 8,
-            cmd_buffer_buffered = False,
+            cmd_buffer_depth    = 2,
+            cmd_buffer_buffered = True,
             with_auto_precharge = True,
         )
    

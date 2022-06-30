@@ -2,6 +2,7 @@
   class bank_machine_env extends uvm_env;
     req_agent agent;
     bm_monitor_bm bm_mon;
+    bm_responder bm_res;
     bank_machine_checker bank_machine_chker;
     bank_machine_virtual_sequencer virt_sqr;
     //bank_machine_coverage bank_machine_cvrg;
@@ -17,6 +18,7 @@
       this.bank_machine_chker = bank_machine_checker::type_id::create("bank_machine_chker", this);
       this.agent = req_agent::type_id::create("req_agent", this);
       this.bm_mon = bm_monitor_bm::type_id::create("bm_mon", this);
+      this.bm_res = bm_responder::type_id::create("bm_res", this);
       virt_sqr = bank_machine_virtual_sequencer::type_id::create("virt_sqr", this);
     endfunction
 

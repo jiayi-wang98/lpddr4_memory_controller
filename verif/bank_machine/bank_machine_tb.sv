@@ -8,6 +8,8 @@ module bank_machine_tb();
     cmd_rw_interface cmd_rw_if_0(clk,rst);
     litedram_cmd_interface req_if(clk,rst);
 
+    assign cmd_rw_if_0.refresh_req=1'b0;
+
     logic [7:0] bm_tRTP_cfg=4;
     logic [7:0] bm_tWTP_cfg=17;
 	logic [7:0] bm_tRC_cfg=35;
@@ -25,7 +27,7 @@ module bank_machine_tb();
     .req_lock                 (req_if.interface_bank_lock),
     .req_wdata_ready          (req_if.interface_bank_wdata_ready),
     .req_rdata_valid          (req_if.interface_bank_rdata_valid),
-    .refresh_req              (1'b0),
+    .refresh_req              (cmd_rw_if_0.refresh_req),
     .refresh_gnt              (cmd_rw_if_0.refresh_gnt),
     .cmd_valid                (cmd_rw_if_0.cmd_valid),
     .cmd_ready                (cmd_rw_if_0.cmd_ready),
@@ -55,14 +57,6 @@ module bank_machine_tb();
         clk=0;
         forever begin
             #1 clk=~clk;
-        end
-    end
-
-    initial begin
-        cmd_rw_if_0.cmd_ready=1'b0;
-        forever begin
-            #4 cmd_rw_if_0.cmd_ready<=1'b1;
-            #2 cmd_rw_if_0.cmd_ready<=1'b0;
         end
     end
 

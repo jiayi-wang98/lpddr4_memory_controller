@@ -77,6 +77,7 @@
                                       );
       this.env.agent.set_interface(ld_vif);
       this.env.bm_mon.set_interface(cmd_vif);
+      this.env.bm_res.set_interface(cmd_vif);
       this.env.bank_machine_chker.set_interface(cmd_vif,ld_vif);
       //this.env.cvrg.set_interface('{ch0_vif, ch1_vif, ch2_vif}, reg_vif, arb_vif, fmt_vif, mcdf_vif);
       this.env.virt_sqr.set_interface(cmd_vif);
@@ -91,13 +92,14 @@
     task do_data();
       // User
       @(negedge p_sequencer.cmd_vif.rst);
+      //wait for timers to ready
       this.wait_cycles(10);
       fork
         `uvm_do_on_with(req_cmd_seq, p_sequencer.req_sqr, 
-                        {ntrans== 10;}
+                        {ntrans== 100;}
                        )
       join
-      #10us; // wait until all data haven been transfered
+      #1us; // wait until all data haven been transfered
     endtask
   endclass: bank_machine_basic_virtual_sequence
 

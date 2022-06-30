@@ -6,11 +6,18 @@
     rand bit[5:0] col_address[];
     rand bit we[];//read or write
     rand bit mw[];
+
+    rand int idle_n =1;
     bit rsp;
 
     constraint ba_cst{
       soft bank_address == 0;
     };
+
+    constraint idle_n_cst{
+      idle_n>0;
+      idle_n<8;
+    }
 
     //constraint rst{reset==1;}
     constraint col_cmd_num_cst{
@@ -37,6 +44,7 @@
       `uvm_field_array_int(col_address, UVM_ALL_ON)
       `uvm_field_array_int(we, UVM_ALL_ON)
       `uvm_field_array_int(mw, UVM_ALL_ON)
+      `uvm_field_int(idle_n, UVM_ALL_ON)
       `uvm_field_int(rsp, UVM_ALL_ON)
     `uvm_object_utils_end
 
