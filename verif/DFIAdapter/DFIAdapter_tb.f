@@ -1,16 +1,17 @@
-+define+ROW_CHECK
 +incdir+./
 +incdir+../rtl
-+incdir+./bm_agent
-+incdir+./refresher_agent
+//+incdir+./bm_agent
+//+incdir+./refresher_agent
 +incdir+./dfi_agent
-+incdir+./bank_machine
-+incdir+./req_agent
+//+incdir+./bank_machine
+//+incdir+./req_agent
++incdir+./DFIAdapter
++incdir+./dfi_lpddr4_agent
 +incdir+/home/lab.apps/vlsiapps_new/vcs/R-2020.12-SP1/etc/uvm-1.2
-../rtl/bankmachine_0.v
-./bank_machine/bank_machine_tb.sv
+../rtl/DFIAdapter.v
+./DFIAdapter/DFIAdapter_tb.sv
 ./interface.sv
-./bank_machine/bank_machine_test_pkg.sv
+./DFIAdapter/DFIAdapter_test_pkg.sv
 
 //./tb_defs.svh
 //./multiplexer/dfi_checker.svh

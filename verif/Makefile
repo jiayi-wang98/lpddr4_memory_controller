@@ -1,10 +1,14 @@
+sim DFIAdapter: clean
+	vcs -full64  -sverilog -f ./DFIAdapter/DFIAdapter_tb.f  -dpi -ntb_opts uvm -debug_pp -timescale=1ns/10ps
+	$ ./simv +UVM_TR_RECORD +UVM_VERBOSITY=HIGH +UVM_TESTNAME=DFIAdapter_basic_test
+
 sim bank_machine: clean
 	vcs -full64  -sverilog -f ./bank_machine/bank_machine_tb.f  -dpi -ntb_opts uvm -debug_pp -timescale=1ns/10ps
-	$ ./simv +UVM_TR_RECORD +UVM_VERBOSITY=HIGH +UVM_TESTNAME=bank_machine_basic_test
+	$ ./simv +UVM_TR_RECORD +UVM_VERBOSITY=HIGH +UVM_TESTNAME=bank_machine_basic_test 
 
 sim multiplexer: clean
 	vcs -full64  -sverilog -f ./multiplexer/multiplexer_tb.f  -dpi -ntb_opts uvm -debug_pp -timescale=1ns/10ps
-	$ ./simv +UVM_TR_RECORD +UVM_VERBOSITY=HIGH +UVM_TESTNAME=multiplexer_basic_test
+	$ ./simv +UVM_TR_RECORD +UVM_VERBOSITY=HIGH +UVM_TESTNAME=multiplexer_basic_test 
 
 sim refresher: 
 	rm -rf csrc simv*

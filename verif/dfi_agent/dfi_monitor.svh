@@ -38,19 +38,24 @@
         m.bank=m0.bank;
         m.address=m0.address;
         valid_num+=1;
-      end else if(m1.cmd!=ERROR_0) begin
+      end
+
+      if(m1.cmd!=ERROR_0) begin
         m.cmd=m1.cmd;
         m.t=m1.t;
         m.bank=m1.bank;
         m.address=m1.address;
         valid_num+=1;
-      end else if(m2.cmd!=ERROR_0) begin
+      end
+      if(m2.cmd!=ERROR_0) begin
         m.cmd=m2.cmd;
         m.t=m2.t;
         m.bank=m2.bank;
         m.address=m2.address;
         valid_num+=1;
-      end else if(m3.cmd!=ERROR_0) begin
+      end
+
+      if(m3.cmd!=ERROR_0) begin
         m.cmd=m3.cmd;
         m.t=m3.t;
         m.bank=m3.bank;
@@ -508,7 +513,13 @@
         endcase
         if(m0.cmd!=ERROR_0) begin
           mon_dfi_port.write(m0);
-          `uvm_info(get_type_name(), $sformatf("Time: %0t monitored DFI p0 cmd %s at bank %d, address 0x%h", m0.t,DDR_CMD[m0.cmd],m0.bank,m0.address), UVM_HIGH)
+          if(m0.cmd==REFRESH_ALL||m0.cmd==PRECHARGE||m0.cmd==PRECHARGE_ALL) begin
+            `uvm_info(get_type_name(), $sformatf("Time: %0t monitored DFI p0 cmd %s at bank %d",m0.t,DDR_CMD[m0.cmd],m0.bank), UVM_HIGH)
+          end else if(m0.cmd==ACTIVATE) begin
+            `uvm_info(get_type_name(), $sformatf("Time: %0t monitored DFI p0 cmd %s at bank %d, row 0x%0h",m0.t,DDR_CMD[m0.cmd],m0.bank,m0.address), UVM_HIGH)
+          end else begin
+            `uvm_info(get_type_name(), $sformatf("Time: %0t monitored DFI p0 cmd %s at bank %d, col 0x%0h0",m0.t,DDR_CMD[m0.cmd],m0.bank,m0.address[9:4]), UVM_HIGH)
+          end
         end
         //p1
         //@(posedge intf.clk iff ((intf.dfi_phase1_interface_if.mon_ck.ras_n==='b0)||(intf.dfi_phase1_interface_if.mon_ck.cas_n==='b0)));
@@ -543,7 +554,13 @@
         endcase
         if(m1.cmd!=ERROR_0) begin
           mon_dfi_port.write(m1);
-          `uvm_info(get_type_name(), $sformatf("Time: %0t monitored DFI p1 cmd %s at bank %d, address 0x%h",m1.t, DDR_CMD[m1.cmd],m1.bank,m1.address), UVM_HIGH)
+          if(m1.cmd==REFRESH_ALL||m1.cmd==PRECHARGE||m1.cmd==PRECHARGE_ALL) begin
+            `uvm_info(get_type_name(), $sformatf("Time: %0t monitored DFI p1 cmd %s at bank %d",m1.t,DDR_CMD[m1.cmd],m1.bank), UVM_HIGH)
+          end else if(m1.cmd==ACTIVATE) begin
+            `uvm_info(get_type_name(), $sformatf("Time: %0t monitored DFI p1 cmd %s at bank %d, row 0x%0h",m1.t,DDR_CMD[m1.cmd],m1.bank,m1.address), UVM_HIGH)
+          end else begin
+            `uvm_info(get_type_name(), $sformatf("Time: %0t monitored DFI p1 cmd %s at bank %d, col 0x%0h0",m1.t,DDR_CMD[m1.cmd],m1.bank,m1.address[9:4]), UVM_HIGH)
+          end
         end
 
         //p2
@@ -579,7 +596,13 @@
         endcase
         if(m2.cmd!=ERROR_0) begin
           mon_dfi_port.write(m2);
-          `uvm_info(get_type_name(), $sformatf("Time: %0t monitored DFI p2 cmd %s at bank %d, address 0x%h", m2.t,DDR_CMD[m2.cmd],m2.bank,m2.address), UVM_HIGH)
+          if(m2.cmd==REFRESH_ALL||m2.cmd==PRECHARGE||m2.cmd==PRECHARGE_ALL) begin
+            `uvm_info(get_type_name(), $sformatf("Time: %0t monitored DFI p2 cmd %s at bank %d",m2.t,DDR_CMD[m2.cmd],m2.bank), UVM_HIGH)
+          end else if(m2.cmd==ACTIVATE) begin
+            `uvm_info(get_type_name(), $sformatf("Time: %0t monitored DFI p2 cmd %s at bank %d, row 0x%0h",m2.t,DDR_CMD[m2.cmd],m2.bank,m2.address), UVM_HIGH)
+          end else begin
+            `uvm_info(get_type_name(), $sformatf("Time: %0t monitored DFI p2 cmd %s at bank %d, col 0x%0h0",m2.t,DDR_CMD[m2.cmd],m2.bank,m2.address[9:4]), UVM_HIGH)
+          end
         end
         //p3
         //@(posedge intf.clk iff ((intf.dfi_phase3_interface_if.mon_ck.ras_n==='b0)||(intf.dfi_phase3_interface_if.mon_ck.cas_n==='b0)));
@@ -614,10 +637,17 @@
         endcase
         if(m3.cmd!=ERROR_0) begin
           mon_dfi_port.write(m3);
-          `uvm_info(get_type_name(), $sformatf("Time: %0t monitored DFI p3 cmd %s at bank %d, address 0x%h",m3.t,DDR_CMD[m3.cmd],m3.bank,m3.address), UVM_HIGH)
+          if(m3.cmd==REFRESH_ALL||m3.cmd==PRECHARGE||m3.cmd==PRECHARGE_ALL) begin
+            `uvm_info(get_type_name(), $sformatf("Time: %0t monitored DFI p3 cmd %s at bank %d",m3.t,DDR_CMD[m3.cmd],m3.bank), UVM_HIGH)
+          end else if(m3.cmd==ACTIVATE) begin
+            `uvm_info(get_type_name(), $sformatf("Time: %0t monitored DFI p3 cmd %s at bank %d, row 0x%0h",m3.t,DDR_CMD[m3.cmd],m3.bank,m3.address), UVM_HIGH)
+          end else begin
+            `uvm_info(get_type_name(), $sformatf("Time: %0t monitored DFI p3 cmd %s at bank %d, col 0x%0h0",m3.t,DDR_CMD[m3.cmd],m3.bank,m3.address[9:4]), UVM_HIGH)
+          end
         end
-
+`ifdef TIMING_CHECK
         this.update_cmd(m0,m1,m2,m3);
+`endif
       end
     endtask
   endclass: dfi_monitor

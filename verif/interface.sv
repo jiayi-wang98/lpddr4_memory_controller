@@ -269,7 +269,8 @@ interface dfi_phase_interface(input clk,rst);
   	endclocking
 	clocking drv_ck @(posedge clk);
     	default input #0.1 output #0.1;
-    	output address,bank,cas_n,cs_n,ras_n,we_n,mw,cke,odt,reset_n,act_n,wrdata,wrdata_en,wrdata_mask,rddata_en,rddata,rddata_valid;
+    	output address,bank,cas_n,cs_n,ras_n,we_n,mw,cke,odt,reset_n,act_n,wrdata,wrdata_en,wrdata_mask,rddata_en;
+		input rddata,rddata_valid;
   	endclocking
 endinterface
 
@@ -299,6 +300,7 @@ interface dfi_phase_lpddr4_interface(input clk,rst);
   	endclocking
 	clocking drv_ck @(posedge clk);
     	default input #0.1 output #0.1;
-    	output ca,cs,cke,odt,reset_n,act_n,wrdata,wrdata_en,wrdata_mask,rddata_en,rddata,rddata_valid;
+    	output ca,cs,cke,odt,reset_n,act_n,wrdata,wrdata_en,wrdata_mask,rddata_en;
+		input rddata,rddata_valid;
   	endclocking
 endinterface

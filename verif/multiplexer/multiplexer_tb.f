@@ -1,3 +1,4 @@
++define+TIMING_CHECK
 +incdir+./
 +incdir+../rtl
 +incdir+./bm_agent
