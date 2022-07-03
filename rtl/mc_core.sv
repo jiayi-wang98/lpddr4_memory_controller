@@ -1,38 +1,38 @@
 module mc_core(
-    native_interface native_if_0,native_if_1;
-    dfi_interface dfi_if;
+    native_interface native_if_0,native_if_1,
+    dfi_interface dfi_if,
 	//system clock/reset
 	input clk,
 	input rst,
 
     //CSR
-    input [1:0] mul_rdphase_cfg;
-    input [1:0] mul_wrphase_cfg;
-    input [1:0] mul_rdcmd_phase_cfg;
-    input [1:0] mul_wrcmd_phase_cfg;
-    input [7:0] mul_tRRD_cfg;
-    input [7:0] mul_tFAW_cfg;
-    input [7:0] mul_tCCD_cfg;
-    input [7:0] mul_WTR_LATENCY_cfg;
-    input [7:0] mul_RTW_LATENCY_cfg;
-    input [7:0] mul_READ_TIME_cfg;
-    input [7:0] mul_WRITE_TIME_cfg;
+    input [1:0] mul_rdphase_cfg,
+    input [1:0] mul_wrphase_cfg,
+    input [1:0] mul_rdcmd_phase_cfg,
+    input [1:0] mul_wrcmd_phase_cfg,
+    input [7:0] mul_tRRD_cfg,
+    input [7:0] mul_tFAW_cfg,
+    input [7:0] mul_tCCD_cfg,
+    input [7:0] mul_WTR_LATENCY_cfg,
+    input [7:0] mul_RTW_LATENCY_cfg,
+    input [7:0] mul_READ_TIME_cfg,
+    input [7:0] mul_WRITE_TIME_cfg,
 
-    input [11:0] ref_tREFI_cfg;
-    input [3:0] ref_POSTPONE_cfg;
-    input [7:0] ref_tRP_cfg;
-    input [7:0] ref_tRFC_cfg;
+    input [11:0] ref_tREFI_cfg,
+    input [3:0] ref_POSTPONE_cfg,
+    input [7:0] ref_tRP_cfg,
+    input [7:0] ref_tRFC_cfg,
 
-    input [7:0] bm_tWTP_cfg;
-    input [7:0] bm_tRTP_cfg;
-    input [7:0] bm_tRAS_cfg;
-    input [7:0] bm_tRC_cfg;
-    input [7:0] bm_tRP_cfg;
-    input [7:0] bm_tRCD_cfg;
-    input [7:0] bm_tCCDMW_cfg;
+    input [7:0] bm_tWTP_cfg,
+    input [7:0] bm_tRTP_cfg,
+    input [7:0] bm_tRAS_cfg,
+    input [7:0] bm_tRC_cfg,
+    input [7:0] bm_tRP_cfg,
+    input [7:0] bm_tRCD_cfg,
+    input [7:0] bm_tCCDMW_cfg,
 
-    input [7:0] crb_READ_LATENCY_cfg;
-    input [7:0] crb_WRITE_LATENCY_cfg;
+    input [7:0] crb_READ_LATENCY_cfg,
+    input [7:0] crb_WRITE_LATENCY_cfg
 
     
 );
