@@ -9,7 +9,7 @@
 ../rtl/multiplexer_b8.v
 ../rtl/refresher_pos_8.v
 ./multiplexer/multiplexer_tb.sv
-./interface.sv
+../rtl/interface.sv
 ./multiplexer/multiplexer_test_pkg.sv
 
 //./tb_defs.svh

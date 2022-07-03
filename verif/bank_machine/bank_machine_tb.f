@@ -9,7 +9,7 @@
 +incdir+/home/lab.apps/vlsiapps_new/vcs/R-2020.12-SP1/etc/uvm-1.2
 ../rtl/bankmachine_0.v
 ./bank_machine/bank_machine_tb.sv
-./interface.sv
+../rtl/interface.sv
 ./bank_machine/bank_machine_test_pkg.sv
 
 //./tb_defs.svh

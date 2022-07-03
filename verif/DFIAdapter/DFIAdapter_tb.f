@@ -10,7 +10,7 @@
 +incdir+/home/lab.apps/vlsiapps_new/vcs/R-2020.12-SP1/etc/uvm-1.2
 ../rtl/DFIAdapter.v
 ./DFIAdapter/DFIAdapter_tb.sv
-./interface.sv
+../rtl/interface.sv
 ./DFIAdapter/DFIAdapter_test_pkg.sv
 
 //./tb_defs.svh
