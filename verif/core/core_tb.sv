@@ -89,6 +89,9 @@ module core_tb();
         uvm_config_db #(virtual native_interface)::set(uvm_root::get(), "uvm_test_top", "nat_vif_0", native_if_0);
 		uvm_config_db #(virtual native_interface)::set(uvm_root::get(), "uvm_test_top", "nat_vif_1", native_if_1);
         uvm_config_db #(virtual dfi_lpddr4_interface)::set(uvm_root::get(), "uvm_test_top", "dfi_lpddr4_vif", dfi_lpddr4_if);
+`ifdef TIMING_CHECK
+        uvm_config_db #(virtual dfi_interface)::set(uvm_root::get(), "uvm_test_top", "dfi_vif", u_mc_core.dfi_if);
+`endif
         run_test("core_basic_test");
         $finish;
     end

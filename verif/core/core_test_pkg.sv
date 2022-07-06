@@ -4,6 +4,7 @@ package core_test_pkg;
 
     `include "tb_defs.svh"
     
+    `include "dfi_monitor.svh"
     `include "dfi_lpddr4_responder.svh"
     `include "dfi_lpddr4_monitor.svh"
     `include "dfi_lpddr4_agent.svh"

@@ -1,10 +1,12 @@
 +define+RW_ONLY
 +define+DATA_PATH
++define+TIMING_CHECK
 +incdir+./
 +incdir+../rtl
 +incdir+./core
 +incdir+./dfi_lpddr4_agent
 +incdir+./native_agent
++incdir+./dfi_agent
 +incdir+/home/lab.apps/vlsiapps_new/vcs/R-2020.12-SP1/etc/uvm-1.2
 ./core/core_tb.sv
 ../rtl/interface.sv

@@ -28,6 +28,9 @@
     virtual native_interface nat_vif_0;
     virtual native_interface nat_vif_1;
     virtual dfi_lpddr4_interface dfi_lpddr4_vif;
+`ifdef TIMING_CHECK
+    virtual dfi_interface dfi_vif;
+`endif
 
     `uvm_component_utils(core_root_test)
 
@@ -47,6 +50,11 @@
       if(!uvm_config_db#(virtual dfi_lpddr4_interface)::get(this,"","dfi_lpddr4_vif", dfi_lpddr4_vif)) begin
         `uvm_fatal("GETVIF","cannot get dfi_lpddr4 vif handle from config DB")
       end
+`ifdef TIMING_CHECK
+      if(!uvm_config_db#(virtual dfi_interface)::get(this,"","dfi_vif", dfi_vif)) begin
+        `uvm_fatal("GETVIF","cannot get dfi vif handle from config DB")
+      end
+`endif
       env = core_env::type_id::create("env", this);
     endfunction
 
@@ -54,7 +62,11 @@
       super.connect_phase(phase);
       // After get virtual interface from config_db, and then set them to
       // child components
-      this.set_interface(nat_vif_0,nat_vif_1, dfi_lpddr4_vif);
+      this.set_interface(nat_vif_0,nat_vif_1, dfi_lpddr4_vif
+`ifdef TIMING_CHECK
+      ,dfi_vif
+`endif
+      );
     endfunction
 
     function void end_of_elaboration_phase(uvm_phase phase);
@@ -79,12 +91,18 @@
     virtual function void set_interface(virtual native_interface nat_vif_0
                                         ,virtual native_interface nat_vif_1 
                                         ,virtual dfi_lpddr4_interface dfi_lpddr4_vif
+`ifdef TIMING_CHECK
+                                        ,virtual dfi_interface dfi_vif
+`endif
                                       );
       this.env.nat_agents[0].set_interface(nat_vif_0);
       this.env.nat_agents[1].set_interface(nat_vif_1);
-      this.env.dfi_lpddr4_agent.set_interface(dfi_lpddr4_vif);
+      this.env.lpddr4_agent.set_interface(dfi_lpddr4_vif);
       this.env.core_chker.set_interface(nat_vif_0,nat_vif_1,dfi_lpddr4_vif);
       this.env.virt_sqr.set_interface(nat_vif_0,nat_vif_1,dfi_lpddr4_vif);
+`ifdef TIMING_CHECK
+      this.env.dfi_mon.set_interface(dfi_vif);
+`endif
     endfunction
   endclass: core_root_test
 

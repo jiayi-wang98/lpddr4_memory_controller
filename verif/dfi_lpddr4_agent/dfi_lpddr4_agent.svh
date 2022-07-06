@@ -1,13 +1,13 @@
   //  dfi_lpddr4_agent
-  class lpddr4_agent extends uvm_agent;
+  class dfi_lpddr4_agent extends uvm_agent;
     dfi_lpddr4_responder responder;
     dfi_lpddr4_monitor monitor;
     //dfi_data_sequencer sequencer;
     virtual dfi_lpddr4_interface vif;
 
-    `uvm_component_utils(lpddr4_agent)
+    `uvm_component_utils(dfi_lpddr4_agent)
 
-    function new(string name = "lpddr4_agent", uvm_component parent);
+    function new(string name = "dfi_lpddr4_agent", uvm_component parent);
       super.new(name, parent);
     endfunction
 
