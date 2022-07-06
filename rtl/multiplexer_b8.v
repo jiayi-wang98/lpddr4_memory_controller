@@ -208,7 +208,7 @@ module multiplexer_b8(
 	input [7:0] mul_tFAW_cfg,
 	input [7:0] mul_tCCD_cfg,
 	input [7:0] mul_WTR_LATENCY_cfg,
-	input [7:0] mul_RTW_LATENCT_cfg,
+	input [7:0] mul_RTW_LATENCY_cfg,
 	input [7:0] mul_READ_TIME_cfg,
 	input [7:0] mul_WRITE_TIME_cfg,
 	input [1:0] mul_rd_phase_cfg,
@@ -3460,8 +3460,8 @@ always @(posedge sys_clk) begin
 		end
 	end
 	if (trtwcon_valid) begin
-		trtwcon_count <= (mul_RTW_LATENCT_cfg - 1'd1);
-		if (((mul_RTW_LATENCT_cfg - 1'd1) == 1'd0)) begin
+		trtwcon_count <= (mul_RTW_LATENCY_cfg - 1'd1);
+		if (((mul_RTW_LATENCY_cfg - 1'd1) == 1'd0)) begin
 			trtwcon_ready <= 1'd1;
 		end else begin
 			trtwcon_ready <= 1'd0;

@@ -39,7 +39,15 @@ typedef struct packed {
 } req_t;
 
 typedef struct packed {
-    bit [63:0] data;
+    time t;
+    bit we;
+    bit mw;
+    bit[29:0] address;
+} nat_cmd_t;
+
+typedef struct packed {
+    bit [255:0] data;
+    bit [31:0] data_mask;
     bit we;
 } data_t;
 
@@ -51,9 +59,10 @@ typedef struct packed {
     bit ras;
     bit we;
     bit mw;
+    bit[16:0] row;
     bit[16:0] address;
     bit[2:0] bank;
-  } cmd_t;
+} cmd_t;
 
 typedef struct packed {
     time t;
@@ -62,6 +71,14 @@ typedef struct packed {
     bit ras_n;
     bit we_n;
     bit mw;
+    bit[16:0] row;
     bit[16:0] address;
     bit[2:0] bank;
-  } dfi_cmd_t;
+} dfi_cmd_t;
+
+typedef struct packed{
+    bit [511:0] data;
+    bit [2:0] bank;
+    bit [5:0] col;
+    bit [16:0] row;
+} dram_memory_space;

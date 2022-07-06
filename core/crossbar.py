@@ -71,8 +71,8 @@ class LiteDRAMCrossbar(Module):
         
         #self.read_latency     = controller.settings.phy.read_latency + 1
         #self.write_latency    = controller.settings.phy.write_latency + 1
-        self.read_latency=Signal(5,reset_less=True,name="crb_READ_LATENCY_cfg")
-        self.write_latency=Signal(5,reset_less=True,name="crb_WRITE_LATENCY_cfg")
+        self.read_latency=Signal(8,reset_less=True,name="crb_READ_LATENCY_cfg")
+        self.write_latency=Signal(8,reset_less=True,name="crb_WRITE_LATENCY_cfg")
         self.bank_bits = log2_int(self.nbanks, False)
         self.rank_bits = log2_int(self.nranks, False)
 
@@ -157,10 +157,9 @@ class LiteDRAMCrossbar(Module):
             # Arbitrate ----------------------------------------------------------------------------
             bank_selected  = [(ba == nb) & ~locked for ba, locked in zip(m_ba, master_locked)]
             bank_requested = [bs & master.cmd.valid for bs, master in zip(bank_selected, self.masters)]
-            self.comb += [
-                arbiter.request.eq(Cat(*bank_requested)),
-                arbiter.ce.eq(~bank.valid & ~bank.lock)
-            ]
+            self.comb += arbiter.request.eq(Cat(*bank_requested))
+            self.comb += arbiter.ce.eq(~bank.valid & ~bank.lock)
+            
 
             # Route requests -----------------------------------------------------------------------
             self.comb += [
@@ -210,13 +209,15 @@ class LiteDRAMCrossbar(Module):
 
         #add 1:4 ratio characteristics
         for master, master_ready in zip(self.masters, master_readys):
-            master_ready_dly=Signal()
-            self.sync+= master_ready_dly.eq(master_ready)
-            self.comb += master.cmd.ready.eq(master_ready|master_ready_dly)
+            self.comb += master.cmd.ready.eq(master_ready)
+
+        master_wdata_readys_dlys = list()
         for master, master_wdata_ready in zip(self.masters, master_wdata_readys):
             master_wdata_ready_dly=Signal()
             self.sync+= master_wdata_ready_dly.eq(master_wdata_ready)
             self.comb += master.wdata.ready.eq(master_wdata_ready|master_wdata_ready_dly)
+            master_wdata_readys_dlys.append(master.wdata.ready)
+
         for master, master_rdata_valid in zip(self.masters, master_rdata_valids):
             master_rdata_valid_dly=Signal()
             self.sync+= master_rdata_valid_dly.eq(master_rdata_valid)
@@ -233,7 +234,7 @@ class LiteDRAMCrossbar(Module):
             controller.wdata.eq(0),
             controller.wdata_we.eq(0),
         ]
-        self.comb += Case(Cat(*master_wdata_readys), wdata_cases)
+        self.comb += Case(Cat(*master_wdata_readys_dlys), wdata_cases)
 
         # Route data reads -------------------------------------------------------------------------
         for master in self.masters:

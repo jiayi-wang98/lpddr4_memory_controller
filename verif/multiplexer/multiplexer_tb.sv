@@ -21,7 +21,7 @@ module multiplexer_tb();
 	logic [7:0] mul_tFAW_cfg=8'd16;
 	logic [7:0] mul_tCCD_cfg=8'd2;
 	logic [7:0] mul_WTR_LATENCY_cfg=8'd13;
-	logic [7:0] mul_RTW_LATENCT_cfg=8'd10;
+	logic [7:0] mul_RTW_LATENCY_cfg=8'd10;
 	logic [7:0] mul_READ_TIME_cfg=8'd64;
 	logic [7:0] mul_WRITE_TIME_cfg=8'd32;
 	logic [1:0] mul_rd_phase_cfg=2'd0;
@@ -244,7 +244,7 @@ module multiplexer_tb();
     .mul_tFAW_cfg              (mul_tFAW_cfg),
     .mul_tCCD_cfg              (mul_tCCD_cfg),
     .mul_WTR_LATENCY_cfg       (mul_WTR_LATENCY_cfg),
-    .mul_RTW_LATENCT_cfg       (mul_RTW_LATENCT_cfg),
+    .mul_RTW_LATENCY_cfg       (mul_RTW_LATENCY_cfg),
     .mul_READ_TIME_cfg         (mul_READ_TIME_cfg),
     .mul_WRITE_TIME_cfg        (mul_WRITE_TIME_cfg),
     .mul_rd_phase_cfg          (mul_rd_phase_cfg),

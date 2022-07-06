@@ -512,7 +512,13 @@
           default: m0.cmd=ERROR_1;
         endcase
         if(m0.cmd!=ERROR_0) begin
+`ifndef RW_ONLY
           mon_dfi_port.write(m0);
+`else 
+          if(m0.cmd==COL_READ||m0.cmd==COL_WRITE||m0.cmd==COL_READ_AP||m0.cmd==COL_WRITE_AP||m0.cmd==MASKED_WRITE_AP||m0.cmd==MASKED_WRITE) begin
+            mon_dfi_port.write(m0);
+          end
+`endif
           if(m0.cmd==REFRESH_ALL||m0.cmd==PRECHARGE||m0.cmd==PRECHARGE_ALL) begin
             `uvm_info(get_type_name(), $sformatf("Time: %0t monitored DFI p0 cmd %s at bank %d",m0.t,DDR_CMD[m0.cmd],m0.bank), UVM_HIGH)
           end else if(m0.cmd==ACTIVATE) begin
@@ -553,7 +559,13 @@
           default: m1.cmd=ERROR_1;
         endcase
         if(m1.cmd!=ERROR_0) begin
+`ifndef RW_ONLY
           mon_dfi_port.write(m1);
+`else 
+          if(m1.cmd==COL_READ||m1.cmd==COL_WRITE||m1.cmd==COL_READ_AP||m1.cmd==COL_WRITE_AP||m1.cmd==MASKED_WRITE_AP||m1.cmd==MASKED_WRITE) begin
+            mon_dfi_port.write(m1);
+          end
+`endif
           if(m1.cmd==REFRESH_ALL||m1.cmd==PRECHARGE||m1.cmd==PRECHARGE_ALL) begin
             `uvm_info(get_type_name(), $sformatf("Time: %0t monitored DFI p1 cmd %s at bank %d",m1.t,DDR_CMD[m1.cmd],m1.bank), UVM_HIGH)
           end else if(m1.cmd==ACTIVATE) begin
@@ -595,7 +607,13 @@
           default: m2.cmd=ERROR_1;
         endcase
         if(m2.cmd!=ERROR_0) begin
+`ifndef RW_ONLY
           mon_dfi_port.write(m2);
+`else 
+          if(m2.cmd==COL_READ||m2.cmd==COL_WRITE||m2.cmd==COL_READ_AP||m2.cmd==COL_WRITE_AP||m2.cmd==MASKED_WRITE_AP||m2.cmd==MASKED_WRITE) begin
+            mon_dfi_port.write(m2);
+          end
+`endif
           if(m2.cmd==REFRESH_ALL||m2.cmd==PRECHARGE||m2.cmd==PRECHARGE_ALL) begin
             `uvm_info(get_type_name(), $sformatf("Time: %0t monitored DFI p2 cmd %s at bank %d",m2.t,DDR_CMD[m2.cmd],m2.bank), UVM_HIGH)
           end else if(m2.cmd==ACTIVATE) begin
@@ -636,7 +654,13 @@
           default: m3.cmd=ERROR_1;
         endcase
         if(m3.cmd!=ERROR_0) begin
+`ifndef RW_ONLY
           mon_dfi_port.write(m3);
+`else 
+          if(m3.cmd==COL_READ||m3.cmd==COL_WRITE||m3.cmd==COL_READ_AP||m3.cmd==COL_WRITE_AP||m3.cmd==MASKED_WRITE_AP||m3.cmd==MASKED_WRITE) begin
+            mon_dfi_port.write(m3);
+          end
+`endif
           if(m3.cmd==REFRESH_ALL||m3.cmd==PRECHARGE||m3.cmd==PRECHARGE_ALL) begin
             `uvm_info(get_type_name(), $sformatf("Time: %0t monitored DFI p3 cmd %s at bank %d",m3.t,DDR_CMD[m3.cmd],m3.bank), UVM_HIGH)
           end else if(m3.cmd==ACTIVATE) begin

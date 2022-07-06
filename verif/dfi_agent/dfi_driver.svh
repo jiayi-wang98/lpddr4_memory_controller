@@ -216,7 +216,7 @@
        endcase
     endtask
   
-    task dfi_write(input dfi_trans t);
+    task dfi_write(dfi_trans t);
       case(t.phase)
         2'd0: this.drive_phase(intf.dfi_phase0_interface_if,t);
         2'd1: this.drive_phase(intf.dfi_phase1_interface_if,t);

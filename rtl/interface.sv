@@ -144,7 +144,7 @@ interface native_interface(input clk,rst);
 	logic native_cmd_last;
 	logic native_cmd_payload_we;
 	logic native_cmd_payload_mw;
-	logic [31:0] native_cmd_payload_addr;
+	logic [25:0] native_cmd_payload_addr;
 	logic wdata_valid;
 	logic wdata_ready;
 	logic wdata_first;
@@ -156,6 +156,15 @@ interface native_interface(input clk,rst);
 	logic rdata_first;
 	logic rdata_last;
 	logic [255:0] rdata_payload_data;
+	clocking drv_ck @(posedge clk);
+        default input #0.1 output #0.05;
+        output native_cmd_valid,native_cmd_payload_we,native_cmd_payload_mw,native_cmd_payload_addr,wdata_valid,wdata_payload_data,wdata_payload_we;
+        input native_cmd_ready,wdata_ready,rdata_valid,rdata_payload_data;
+    endclocking
+	clocking mon_ck @(posedge clk);
+        default input #0.1 output #0.05;
+        input native_cmd_valid,native_cmd_payload_we,native_cmd_payload_mw,native_cmd_payload_addr,wdata_valid,wdata_payload_data,wdata_payload_we,native_cmd_ready,wdata_ready,rdata_valid,rdata_payload_data;
+    endclocking
 endinterface
 
 interface litedram_interface(input clk,rst);
@@ -180,12 +189,12 @@ interface litedram_cmd_interface(input clk,rst);
 	logic interface_bank_wdata_ready;
 	logic interface_bank_rdata_valid;
 	clocking drv_ck @(posedge clk);
-        default input #0.1 output #0.1;
+        default input #0.1 output #0.05;
         output interface_bank_valid,interface_bank_we,interface_bank_mw,interface_bank_addr;
         input interface_bank_ready,interface_bank_rdata_valid,interface_bank_wdata_ready,interface_bank_lock;
     endclocking
 	clocking mon_ck @(posedge clk);
-        default input #0.1 output #0.1;
+        default input #0.1 output #0.05;
         input interface_bank_valid,interface_bank_we,interface_bank_mw,interface_bank_addr,interface_bank_ready,interface_bank_rdata_valid,interface_bank_wdata_ready,interface_bank_lock;
     endclocking
 endinterface
@@ -195,12 +204,12 @@ interface litedram_data_interface(input clk,rst);
 	logic [31:0] interface_wdata_we;
 	logic [255:0] interface_rdata;
 	clocking drv_ck @(posedge clk);
-        default input #0.1 output #0.1;
+        default input #0.1 output #0.05;
         output interface_wdata,interface_wdata_we;
         input interface_rdata;
     endclocking
 	clocking mon_ck @(posedge clk);
-        default input #0.1 output #0.1;
+        default input #0.1 output #0.05;
         input interface_wdata,interface_wdata_we,interface_rdata;
     endclocking
 endinterface
@@ -222,17 +231,17 @@ interface cmd_rw_interface(input clk,rst);
 	logic refresh_req;
 	logic refresh_gnt;
 	clocking drv_ck @(posedge clk);
-        default input #0.1 output #0.1;
+        default input #0.1 output #0.05;
         output cmd_valid,cmd_payload_a,cmd_payload_ba,cmd_payload_cas,cmd_payload_ras,cmd_payload_we,cmd_payload_is_cmd,cmd_payload_is_read,cmd_payload_is_write,cmd_payload_is_mw,refresh_gnt;
         input cmd_ready,refresh_req;
     endclocking
 	clocking mon_ck @(posedge clk);
-        default input #0.1 output #0.1;
+        default input #0.1 output #0.05;
         input refresh_gnt,refresh_req,cmd_valid,cmd_payload_a,cmd_payload_ba,cmd_payload_cas,cmd_payload_ras,cmd_payload_we,cmd_payload_is_cmd,cmd_payload_is_read,cmd_payload_is_write,cmd_payload_is_mw,cmd_ready;
     endclocking
 
 	clocking rsp_ck @(posedge clk);
-        default input #0.1 output #0.1;
+        default input #0.1 output #0.05;
         input cmd_valid;
 		output cmd_ready;
     endclocking
@@ -264,11 +273,11 @@ interface dfi_phase_interface(input clk,rst);
 	logic [63:0] rddata;
 	logic rddata_valid;
 	clocking mon_ck @(posedge clk);
-    	default input #0.1 output #0.1;
+    	default input #0.1 output #0.05;
     	input address,bank,cas_n,cs_n,ras_n,we_n,mw,cke,odt,reset_n,act_n,wrdata,wrdata_en,wrdata_mask,rddata_en,rddata,rddata_valid;
   	endclocking
 	clocking drv_ck @(posedge clk);
-    	default input #0.1 output #0.1;
+    	default input #0.1 output #0.05;
     	output address,bank,cas_n,cs_n,ras_n,we_n,mw,cke,odt,reset_n,act_n,wrdata,wrdata_en,wrdata_mask,rddata_en;
 		input rddata,rddata_valid;
   	endclocking
@@ -295,12 +304,17 @@ interface dfi_phase_lpddr4_interface(input clk,rst);
 	logic [63:0] rddata;
 	logic rddata_valid;
 	clocking mon_ck @(posedge clk);
-    	default input #0.1 output #0.1;
+    	default input #0.1 output #0.05;
     	input ca,cs,cke,odt,reset_n,act_n,wrdata,wrdata_en,wrdata_mask,rddata_en,rddata,rddata_valid;
   	endclocking
 	clocking drv_ck @(posedge clk);
-    	default input #0.1 output #0.1;
+    	default input #0.1 output #0.05;
     	output ca,cs,cke,odt,reset_n,act_n,wrdata,wrdata_en,wrdata_mask,rddata_en;
 		input rddata,rddata_valid;
+  	endclocking
+	clocking sdrv_ck @(posedge clk);
+    	default input #0.1 output #0.05;
+		input rddata_en;
+		output rddata,rddata_valid;
   	endclocking
 endinterface

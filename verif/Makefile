@@ -1,3 +1,7 @@
+sim core: clean
+	vcs -full64  -sverilog -f ./core/core_tb.f  -dpi -ntb_opts uvm -debug_pp -timescale=1ns/10ps
+	$ ./simv +UVM_TR_RECORD +UVM_VERBOSITY=HIGH +UVM_TESTNAME=core_basic_test
+
 sim DFIAdapter: clean
 	vcs -full64  -sverilog -f ./DFIAdapter/DFIAdapter_tb.f  -dpi -ntb_opts uvm -debug_pp -timescale=1ns/10ps
 	$ ./simv +UVM_TR_RECORD +UVM_VERBOSITY=HIGH +UVM_TESTNAME=DFIAdapter_basic_test

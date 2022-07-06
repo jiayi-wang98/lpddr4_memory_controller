@@ -1,4 +1,4 @@
-  // bankmachine agent
+  // dfi agent
   class dfi_agent extends uvm_agent;
     dfi_driver driver;
     dfi_monitor monitor;

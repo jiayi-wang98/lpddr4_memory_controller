@@ -1,13 +1,13 @@
 module mc_core(
     native_interface native_if_0,native_if_1,
-    dfi_interface dfi_if,
+    dfi_lpddr4_interface dfi_lpddr4_if,
 	//system clock/reset
 	input clk,
 	input rst,
 
     //CSR
-    input [1:0] mul_rdphase_cfg,
-    input [1:0] mul_wrphase_cfg,
+    input [1:0] mul_rd_phase_cfg,
+    input [1:0] mul_wr_phase_cfg,
     input [1:0] mul_rdcmd_phase_cfg,
     input [1:0] mul_wrcmd_phase_cfg,
     input [7:0] mul_tRRD_cfg,
@@ -91,6 +91,8 @@ refresher_pos_8_wrapper u_refresher_pos_8_wrapper (
     .rst                    (rst)
 );
 
+dfi_interface dfi_if(clk,rst);
+
 multiplexer_b8_wrapper u_multiplexer_b8_wrapper (
     .clk                    (clk),
     .rst                    (rst),
@@ -109,7 +111,7 @@ multiplexer_b8_wrapper u_multiplexer_b8_wrapper (
     .mul_tFAW_cfg           (mul_tFAW_cfg),
     .mul_tCCD_cfg           (mul_tCCD_cfg),
     .mul_WTR_LATENCY_cfg    (mul_WTR_LATENCY_cfg),
-    .mul_RTW_LATENCT_cfg    (mul_RTW_LATENCT_cfg),
+    .mul_RTW_LATENCY_cfg    (mul_RTW_LATENCY_cfg),
     .mul_READ_TIME_cfg      (mul_READ_TIME_cfg),
     .mul_WRITE_TIME_cfg     (mul_WRITE_TIME_cfg),
     .mul_rd_phase_cfg       (mul_rd_phase_cfg),
@@ -118,4 +120,96 @@ multiplexer_b8_wrapper u_multiplexer_b8_wrapper (
     .mul_wrcmd_phase_cfg    (mul_wrcmd_phase_cfg)
 );
 
+
+DFIAdapter u_DFIAdapter (
+    .dfi_p0_address    (dfi_if.dfi_phase0_interface_if.address),
+    .dfi_p0_bank       ({3'd0,dfi_if.dfi_phase0_interface_if.bank}),
+    .dfi_p0_cas_n      (dfi_if.dfi_phase0_interface_if.cas_n),
+    .dfi_p0_cs_n       (dfi_if.dfi_phase0_interface_if.cs_n),
+    .dfi_p0_ras_n      (dfi_if.dfi_phase0_interface_if.ras_n),
+    .dfi_p0_we_n       (dfi_if.dfi_phase0_interface_if.we_n),
+    .dfi_p0_mw         (dfi_if.dfi_phase0_interface_if.mw),
+    .dfi_p1_address    (dfi_if.dfi_phase1_interface_if.address),
+    .dfi_p1_bank       ({3'd0,dfi_if.dfi_phase1_interface_if.bank}),
+    .dfi_p1_cas_n      (dfi_if.dfi_phase1_interface_if.cas_n),
+    .dfi_p1_cs_n       (dfi_if.dfi_phase1_interface_if.cs_n),
+    .dfi_p1_ras_n      (dfi_if.dfi_phase1_interface_if.ras_n),
+    .dfi_p1_we_n       (dfi_if.dfi_phase1_interface_if.we_n),
+    .dfi_p1_mw         (dfi_if.dfi_phase1_interface_if.mw),
+    .dfi_p2_address    (dfi_if.dfi_phase2_interface_if.address),
+    .dfi_p2_bank       ({3'd0,dfi_if.dfi_phase2_interface_if.bank}),
+    .dfi_p2_cas_n      (dfi_if.dfi_phase2_interface_if.cas_n),
+    .dfi_p2_cs_n       (dfi_if.dfi_phase2_interface_if.cs_n),
+    .dfi_p2_ras_n      (dfi_if.dfi_phase2_interface_if.ras_n),
+    .dfi_p2_we_n       (dfi_if.dfi_phase2_interface_if.we_n),
+    .dfi_p2_mw         (dfi_if.dfi_phase2_interface_if.mw),
+    .dfi_p3_address    (dfi_if.dfi_phase3_interface_if.address),
+    .dfi_p3_bank       ({3'd0,dfi_if.dfi_phase3_interface_if.bank}),
+    .dfi_p3_cas_n      (dfi_if.dfi_phase3_interface_if.cas_n),
+    .dfi_p3_cs_n       (dfi_if.dfi_phase3_interface_if.cs_n),
+    .dfi_p3_ras_n      (dfi_if.dfi_phase3_interface_if.ras_n),
+    .dfi_p3_we_n       (dfi_if.dfi_phase3_interface_if.we_n),
+    .dfi_p3_mw         (dfi_if.dfi_phase3_interface_if.mw),
+    .cs                ({dfi_lpddr4_if.dfi_phase3_lpddr4_if.cs,dfi_lpddr4_if.dfi_phase2_lpddr4_if.cs,dfi_lpddr4_if.dfi_phase1_lpddr4_if.cs,dfi_lpddr4_if.dfi_phase0_lpddr4_if.cs}),
+    .ca                ({dfi_lpddr4_if.dfi_phase3_lpddr4_if.ca[0],dfi_lpddr4_if.dfi_phase2_lpddr4_if.ca[0],dfi_lpddr4_if.dfi_phase1_lpddr4_if.ca[0],dfi_lpddr4_if.dfi_phase0_lpddr4_if.ca[0]}),
+    .ca_1              ({dfi_lpddr4_if.dfi_phase3_lpddr4_if.ca[1],dfi_lpddr4_if.dfi_phase2_lpddr4_if.ca[1],dfi_lpddr4_if.dfi_phase1_lpddr4_if.ca[1],dfi_lpddr4_if.dfi_phase0_lpddr4_if.ca[1]}),
+    .ca_2              ({dfi_lpddr4_if.dfi_phase3_lpddr4_if.ca[2],dfi_lpddr4_if.dfi_phase2_lpddr4_if.ca[2],dfi_lpddr4_if.dfi_phase1_lpddr4_if.ca[2],dfi_lpddr4_if.dfi_phase0_lpddr4_if.ca[2]}),
+    .ca_3              ({dfi_lpddr4_if.dfi_phase3_lpddr4_if.ca[3],dfi_lpddr4_if.dfi_phase2_lpddr4_if.ca[3],dfi_lpddr4_if.dfi_phase1_lpddr4_if.ca[3],dfi_lpddr4_if.dfi_phase0_lpddr4_if.ca[3]}),
+    .ca_4              ({dfi_lpddr4_if.dfi_phase3_lpddr4_if.ca[4],dfi_lpddr4_if.dfi_phase2_lpddr4_if.ca[4],dfi_lpddr4_if.dfi_phase1_lpddr4_if.ca[4],dfi_lpddr4_if.dfi_phase0_lpddr4_if.ca[4]}),
+    .ca_5              ({dfi_lpddr4_if.dfi_phase3_lpddr4_if.ca[5],dfi_lpddr4_if.dfi_phase2_lpddr4_if.ca[5],dfi_lpddr4_if.dfi_phase1_lpddr4_if.ca[5],dfi_lpddr4_if.dfi_phase0_lpddr4_if.ca[5]}),
+    .sys_clk           (clk),
+    .sys_rst           (rst)
+);
+
+    always_comb begin
+        dfi_lpddr4_if.dfi_phase0_lpddr4_if.cke=dfi_if.dfi_phase0_interface_if.cke;
+        dfi_lpddr4_if.dfi_phase1_lpddr4_if.cke=dfi_if.dfi_phase1_interface_if.cke;
+        dfi_lpddr4_if.dfi_phase2_lpddr4_if.cke=dfi_if.dfi_phase2_interface_if.cke;
+        dfi_lpddr4_if.dfi_phase3_lpddr4_if.cke=dfi_if.dfi_phase3_interface_if.cke;
+
+        dfi_lpddr4_if.dfi_phase0_lpddr4_if.odt=dfi_if.dfi_phase0_interface_if.odt;
+        dfi_lpddr4_if.dfi_phase1_lpddr4_if.odt=dfi_if.dfi_phase1_interface_if.odt;
+        dfi_lpddr4_if.dfi_phase2_lpddr4_if.odt=dfi_if.dfi_phase2_interface_if.odt;
+        dfi_lpddr4_if.dfi_phase3_lpddr4_if.odt=dfi_if.dfi_phase3_interface_if.odt;
+
+        dfi_lpddr4_if.dfi_phase0_lpddr4_if.reset_n=dfi_if.dfi_phase0_interface_if.reset_n;
+        dfi_lpddr4_if.dfi_phase1_lpddr4_if.reset_n=dfi_if.dfi_phase1_interface_if.reset_n;
+        dfi_lpddr4_if.dfi_phase2_lpddr4_if.reset_n=dfi_if.dfi_phase2_interface_if.reset_n;
+        dfi_lpddr4_if.dfi_phase3_lpddr4_if.reset_n=dfi_if.dfi_phase3_interface_if.reset_n;
+
+        dfi_lpddr4_if.dfi_phase0_lpddr4_if.act_n=dfi_if.dfi_phase0_interface_if.act_n;
+        dfi_lpddr4_if.dfi_phase1_lpddr4_if.act_n=dfi_if.dfi_phase1_interface_if.act_n;
+        dfi_lpddr4_if.dfi_phase2_lpddr4_if.act_n=dfi_if.dfi_phase2_interface_if.act_n;
+        dfi_lpddr4_if.dfi_phase3_lpddr4_if.act_n=dfi_if.dfi_phase3_interface_if.act_n;
+
+        dfi_lpddr4_if.dfi_phase0_lpddr4_if.wrdata=dfi_if.dfi_phase0_interface_if.wrdata;
+        dfi_lpddr4_if.dfi_phase1_lpddr4_if.wrdata=dfi_if.dfi_phase1_interface_if.wrdata;
+        dfi_lpddr4_if.dfi_phase2_lpddr4_if.wrdata=dfi_if.dfi_phase2_interface_if.wrdata;
+        dfi_lpddr4_if.dfi_phase3_lpddr4_if.wrdata=dfi_if.dfi_phase3_interface_if.wrdata;
+
+        dfi_lpddr4_if.dfi_phase0_lpddr4_if.wrdata_en=dfi_if.dfi_phase0_interface_if.wrdata_en;
+        dfi_lpddr4_if.dfi_phase1_lpddr4_if.wrdata_en=dfi_if.dfi_phase1_interface_if.wrdata_en;
+        dfi_lpddr4_if.dfi_phase2_lpddr4_if.wrdata_en=dfi_if.dfi_phase2_interface_if.wrdata_en;
+        dfi_lpddr4_if.dfi_phase3_lpddr4_if.wrdata_en=dfi_if.dfi_phase3_interface_if.wrdata_en;
+
+        dfi_lpddr4_if.dfi_phase0_lpddr4_if.wrdata_mask=dfi_if.dfi_phase0_interface_if.wrdata_mask;
+        dfi_lpddr4_if.dfi_phase1_lpddr4_if.wrdata_mask=dfi_if.dfi_phase1_interface_if.wrdata_mask;
+        dfi_lpddr4_if.dfi_phase2_lpddr4_if.wrdata_mask=dfi_if.dfi_phase2_interface_if.wrdata_mask;
+        dfi_lpddr4_if.dfi_phase3_lpddr4_if.wrdata_mask=dfi_if.dfi_phase3_interface_if.wrdata_mask;
+
+        dfi_lpddr4_if.dfi_phase0_lpddr4_if.rddata_en=dfi_if.dfi_phase0_interface_if.rddata_en;
+        dfi_lpddr4_if.dfi_phase1_lpddr4_if.rddata_en=dfi_if.dfi_phase1_interface_if.rddata_en;
+        dfi_lpddr4_if.dfi_phase2_lpddr4_if.rddata_en=dfi_if.dfi_phase2_interface_if.rddata_en;
+        dfi_lpddr4_if.dfi_phase3_lpddr4_if.rddata_en=dfi_if.dfi_phase3_interface_if.rddata_en;
+
+        dfi_if.dfi_phase0_interface_if.rddata=dfi_lpddr4_if.dfi_phase0_lpddr4_if.rddata;
+        dfi_if.dfi_phase1_interface_if.rddata=dfi_lpddr4_if.dfi_phase1_lpddr4_if.rddata;
+        dfi_if.dfi_phase2_interface_if.rddata=dfi_lpddr4_if.dfi_phase2_lpddr4_if.rddata;
+        dfi_if.dfi_phase3_interface_if.rddata=dfi_lpddr4_if.dfi_phase3_lpddr4_if.rddata;
+
+        dfi_if.dfi_phase0_interface_if.rddata_valid=dfi_lpddr4_if.dfi_phase0_lpddr4_if.rddata_valid;
+        dfi_if.dfi_phase1_interface_if.rddata_valid=dfi_lpddr4_if.dfi_phase1_lpddr4_if.rddata_valid;
+        dfi_if.dfi_phase2_interface_if.rddata_valid=dfi_lpddr4_if.dfi_phase2_lpddr4_if.rddata_valid;
+        dfi_if.dfi_phase3_interface_if.rddata_valid=dfi_lpddr4_if.dfi_phase3_lpddr4_if.rddata_valid;
+    end
 endmodule

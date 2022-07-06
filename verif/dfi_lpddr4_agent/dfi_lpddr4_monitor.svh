@@ -1,11 +1,18 @@
   class dfi_lpddr4_monitor extends uvm_monitor;
     virtual dfi_lpddr4_interface intf;
     uvm_analysis_port #(dfi_cmd_t) mon_cmd_port;
+    uvm_analysis_port #(data_t) mon_rdata_port[2];
+    uvm_analysis_port #(data_t) mon_wdata_port;
+    uvm_analysis_port #(dfi_cmd_t) mon_rsp_port;
+    bit [16:0] current_row[0:7];
+    bit row_open[0:7]={0,0,0,0,0,0,0,0};
     logic [5:0] ca;
     logic [2:0] bank;
     dfi_cmd_t m_ddr;
     bit [3:0] state=0;
     bit [3:0] next_state;
+    bit [0:15] wrdata_en_dly;
+    bit wrdata_en;
     //0: init/idle
     //1: precharge_high
     //2: RFU
@@ -27,10 +34,20 @@
     function new(string name="dfi_lpddr4_monitor", uvm_component parent);
       super.new(name, parent);
       mon_cmd_port = new("mon_cmd_port", this);
+      mon_wdata_port = new("mon_wdata_port", this);
+      foreach(mon_rdata_port[i]) mon_rdata_port[i]= new($sformatf("mon_rdata_port[%d]",i), this);
+      mon_rsp_port = new("mon_rsp_port", this);
     endfunction
 
     task run_phase(uvm_phase phase);
-      this.mon_trans();
+      fork
+        this.mon_cmd();
+`ifdef DATA_PATH
+        this.mon_rdata();
+        this.wrdata_en_dly_line();
+        this.mon_wdata();
+`endif
+      join
     endtask
 
     function void build_phase(uvm_phase phase);
@@ -101,9 +118,16 @@
         1:begin
           if(cs_x===1'b0) begin
             m_ddr.bank=bank;
+            if(m_ddr.cmd==PRECHARGE) begin
+              row_open[bank]=0;
+            end else begin
+              foreach(row_open[i]) row_open[i]=0;
+            end
             next_state=0;
+`ifndef RW_ONLY
             mon_cmd_port.write(m_ddr);
             `uvm_info(get_type_name(), $sformatf("Time: %0t monitored DFI LPDDR4 cmd %s at bank %d", m_ddr.t,DDR_CMD[m_ddr.cmd],m_ddr.bank), UVM_HIGH)
+`endif
           end else begin
             `uvm_error("COMMAND ERROR", $sformatf("cs= %0b in second command cycle",cs_x))
           end
@@ -133,8 +157,12 @@
           if(cs_x===1'b0) begin
             m_ddr.address[5:0]=ca[5:0];
             next_state=0;
+            current_row[m_ddr.bank]=m_ddr.address;
+            row_open[m_ddr.bank]=1;
+`ifndef RW_ONLY
             mon_cmd_port.write(m_ddr);
             `uvm_info(get_type_name(), $sformatf("Time: %0t monitored DFI LPDDR4 cmd %s at bank %d,row 0x%0h", m_ddr.t,DDR_CMD[m_ddr.cmd],m_ddr.bank,m_ddr.address), UVM_HIGH)
+`endif
           end else begin
             `uvm_error("COMMAND ERROR", $sformatf("cs= %0b in second command cycle",cs_x))
           end
@@ -173,7 +201,9 @@
             m_ddr.address[1:0]=2'd0;
             m_ddr.address[16:10]=7'd0;
             next_state=0;
+            m_ddr.row=current_row[m_ddr.bank];
             mon_cmd_port.write(m_ddr);
+            if((m_ddr.cmd==COL_READ)||(m_ddr.cmd==COL_READ_AP)) mon_rsp_port.write(m_ddr);
             `uvm_info(get_type_name(), $sformatf("Time: %0t monitored DFI LPDDR4 cmd %s at bank %d,col 0x%0h", m_ddr.t,DDR_CMD[m_ddr.cmd],m_ddr.bank,m_ddr.address), UVM_HIGH)
           end else begin
             `uvm_error("COMMAND ERROR", $sformatf("cs= %0b in second command cycle",cs_x))
@@ -184,8 +214,10 @@
           if(cs_x===1'b0) begin
             m_ddr.bank=bank;
             next_state=0;
+`ifndef RW_ONLY
             mon_cmd_port.write(m_ddr);
             `uvm_info(get_type_name(), $sformatf("Time: %0t monitored DFI LPDDR4 cmd %s", m_ddr.t,DDR_CMD[m_ddr.cmd]), UVM_HIGH)
+`endif
           end else begin
             `uvm_error("COMMAND ERROR", $sformatf("cs= %0b in second command cycle",cs_x))
           end
@@ -198,11 +230,11 @@
       this.state=next_state;
     endtask
 
-    task mon_trans();
+    task mon_cmd();
       bit cs_0,cs_1,cs_2,cs_3;
       bit [5:0] ca_0,ca_1,ca_2,ca_3;
       forever begin
-        @(posedge intf.clk);
+        @(intf.dfi_phase0_lpddr4_if.mon_ck);
         cs_0=intf.dfi_phase0_lpddr4_if.mon_ck.cs;
         ca_0=intf.dfi_phase0_lpddr4_if.mon_ck.ca;
 
@@ -219,6 +251,62 @@
         this.update_state(cs_1,ca_1);
         this.update_state(cs_2,ca_2);
         this.update_state(cs_3,ca_3);
+      end
+    endtask
+
+    task mon_rdata();
+      bit rddata_valid;
+      data_t rddata;
+      forever begin
+        @(intf.dfi_phase0_lpddr4_if.mon_ck);
+        rddata_valid=((intf.dfi_phase0_lpddr4_if.mon_ck.rddata_valid||intf.dfi_phase1_lpddr4_if.mon_ck.rddata_valid)||(intf.dfi_phase2_lpddr4_if.mon_ck.rddata_valid||intf.dfi_phase3_lpddr4_if.mon_ck.rddata_valid));
+        if(rddata_valid) begin
+          rddata.we=0;
+          rddata.data={intf.dfi_phase3_lpddr4_if.mon_ck.rddata,intf.dfi_phase2_lpddr4_if.mon_ck.rddata,intf.dfi_phase1_lpddr4_if.mon_ck.rddata,intf.dfi_phase0_lpddr4_if.mon_ck.rddata};
+          if(rddata.data[0]==1'b0) mon_rdata_port[0].write(rddata);
+          else mon_rdata_port[1].write(rddata);
+          `uvm_info("DFI READ DATA RECEIVED", $sformatf("Time: %0t monitored DFI RDDATA 0x%0h", $time,rddata.data), UVM_HIGH)
+        end
+      end
+    endtask
+
+    task wrdata_en_dly_line();
+      forever begin
+        @(intf.dfi_phase0_lpddr4_if.mon_ck);
+        wrdata_en<=((intf.dfi_phase0_lpddr4_if.mon_ck.wrdata_en||intf.dfi_phase1_lpddr4_if.mon_ck.wrdata_en)||(intf.dfi_phase2_lpddr4_if.mon_ck.wrdata_en||intf.dfi_phase3_lpddr4_if.mon_ck.wrdata_en));
+        wrdata_en_dly[0]<=wrdata_en;
+        wrdata_en_dly[1]<=wrdata_en_dly[0];
+        wrdata_en_dly[2]<=wrdata_en_dly[1];
+        wrdata_en_dly[3]<=wrdata_en_dly[2];
+        wrdata_en_dly[4]<=wrdata_en_dly[3];
+        wrdata_en_dly[5]<=wrdata_en_dly[4];
+        wrdata_en_dly[6]<=wrdata_en_dly[5];
+        wrdata_en_dly[7]<=wrdata_en_dly[6];
+        wrdata_en_dly[8]<=wrdata_en_dly[7];
+        wrdata_en_dly[9]<=wrdata_en_dly[8];
+        wrdata_en_dly[10]<=wrdata_en_dly[9];
+        wrdata_en_dly[11]<=wrdata_en_dly[10];
+        wrdata_en_dly[12]<=wrdata_en_dly[11];
+        wrdata_en_dly[13]<=wrdata_en_dly[12];
+        wrdata_en_dly[14]<=wrdata_en_dly[13];
+        wrdata_en_dly[15]<=wrdata_en_dly[14];
+      end
+    endtask
+
+    task mon_wdata();
+      //bit wrdata_mask;
+      data_t wrdata;
+      forever begin
+        @(intf.dfi_phase0_lpddr4_if.mon_ck);
+        //wrdata_mask=&((intf.dfi_phase0_lpddr4_if.mon_ck.wrdata_mask&intf.dfi_phase1_lpddr4_if.mon_ck.wrdata_mask)&(intf.dfi_phase2_lpddr4_if.mon_ck.wrdata_mask&intf.dfi_phase3_lpddr4_if.mon_ck.wrdata_mask));
+        //if(wrdata_mask===1'b0) begin
+        if(wrdata_en_dly[9]===1'b1) begin
+          wrdata.we=1;
+          wrdata.data={intf.dfi_phase3_lpddr4_if.mon_ck.wrdata,intf.dfi_phase2_lpddr4_if.mon_ck.wrdata,intf.dfi_phase1_lpddr4_if.mon_ck.wrdata,intf.dfi_phase0_lpddr4_if.mon_ck.wrdata};
+          wrdata.data_mask={intf.dfi_phase3_lpddr4_if.mon_ck.wrdata_mask,intf.dfi_phase2_lpddr4_if.mon_ck.wrdata_mask,intf.dfi_phase1_lpddr4_if.mon_ck.wrdata_mask,intf.dfi_phase0_lpddr4_if.mon_ck.wrdata_mask};
+          mon_wdata_port.write(wrdata);
+          `uvm_info("DFI WRITE DATA SENT", $sformatf("Time: %0t monitored DFI WRDATA 0x%0h, DM 0x%0h", $time,wrdata.data,wrdata.data_mask), UVM_HIGH)
+        end
       end
     endtask
   endclass: dfi_lpddr4_monitor
