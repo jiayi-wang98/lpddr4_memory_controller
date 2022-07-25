@@ -37,6 +37,10 @@ module core_tb();
 	logic [7:0] crb_READ_LATENCY_cfg=12;
 	logic [7:0] crb_WRITE_LATENCY_cfg=10;
 
+    logic [7:0] dfi_rddata_en_latency_cfg=10;
+    logic [7:0] dfi_wrdata_en_latency_cfg=9;
+    logic [7:0] dfi_wdqs_preamble_cfg=8'b11110000;
+
     mc_core u_mc_core (
     .native_if_0              (native_if_0),
     .native_if_1              (native_if_1),
@@ -68,7 +72,10 @@ module core_tb();
     .bm_tRCD_cfg              (bm_tRCD_cfg),
     .bm_tCCDMW_cfg            (bm_tCCDMW_cfg),
     .crb_READ_LATENCY_cfg     (crb_READ_LATENCY_cfg),
-    .crb_WRITE_LATENCY_cfg    (crb_WRITE_LATENCY_cfg)
+    .crb_WRITE_LATENCY_cfg    (crb_WRITE_LATENCY_cfg),
+    .dfi_rddata_en_latency_cfg(dfi_rddata_en_latency_cfg),
+    .dfi_wrdata_en_latency_cfg(dfi_wrdata_en_latency_cfg),
+    .dfi_wdqs_preamble_cfg    (dfi_wdqs_preamble_cfg)
 );
 
     initial begin

@@ -1,127 +1,122 @@
 `timescale 1ns/10ps
+interface ahb_interface(input clk,rst);
+	//ahb bus
+   	logic [31:0]         haddr;
+   	logic                hwrite;
+   	logic                hsel;
+   	logic                hreadyin;
+   	logic [31:0]         hwdata;
+   	logic [1:0]          htrans;
+   	logic [2:0]          hsize;
+   	logic [2:0]          hburst;
+   	logic                hready;
+   	logic [31:0]         hrdata;
+   	logic [1:0]          hresp;
+   	logic                hgrant;
+endinterface
+
 interface axi_interface(input clk,rst);
-    axi_aw_interface if_axi_aw_interface(clk,rst);
-    axi_w_interface if_axi_w_interface(clk,rst);
-    axi_b_interface if_axi_b_interface(clk,rst);
-    axi_ar_interface if_axi_ar_interface(clk,rst);
-    axi_r_interface if_axi_r_interface(clk,rst);
+    axi_aw_interface aw_if(clk,rst);
+    axi_w_interface w_if(clk,rst);
+    axi_b_interface b_if(clk,rst);
+    axi_ar_interface ar_if(clk,rst);
+    axi_r_interface r_if(clk,rst);
 endinterface
 
 interface axi_aw_interface(input clk,rst);
     //axi aw channel
-	logic axi_aw_valid;
-	logic axi_aw_ready;
-	logic axi_aw_first;
-	logic axi_aw_last;
-	logic [31:0] axi_aw_payload_addr;
-	logic [1:0] axi_aw_payload_burst;
-	logic [7:0] axi_aw_payload_len;
-	logic [3:0] axi_aw_payload_size;
-	logic [1:0] axi_aw_payload_lock;
-	logic [2:0] axi_aw_payload_prot;
-	logic [3:0] axi_aw_payload_cache;
-	logic [3:0] axi_aw_payload_qos;
-	logic axi_aw_payload_id;
+	logic valid;
+	logic ready;
+	logic first;
+	logic last;
+	logic [31:0] addr;
+	logic [1:0] burst;
+	logic [7:0] len;
+	logic [3:0] size;
+	logic [1:0] lock;
+	logic [2:0] prot;
+	logic [3:0] cache;
+	logic [3:0] qos;
+	logic id;
     clocking axi_master @(posedge clk);
         default input #500ps output #500ps;
-        input axi_aw_ready;
-        output axi_aw_valid,axi_aw_first,axi_aw_last,axi_aw_payload_addr,axi_aw_payload_burst,axi_aw_payload_len,axi_aw_payload_size,axi_aw_payload_id;
-        output axi_aw_payload_lock,axi_aw_payload_prot,axi_aw_payload_cache,axi_aw_payload_qos;
+        input ready;
+        output valid,first,last,addr,burst,len,size,id;
+        output lock,prot,cache,qos;
     endclocking
 endinterface
 
 interface axi_w_interface(input clk,rst);
     //axi w channel
-	logic axi_w_valid;
-	logic axi_w_ready;
-	logic axi_w_first;
-	logic axi_w_last;
-	logic [255:0] axi_w_payload_data;
-	logic [31:0] axi_w_payload_strb;
-	logic axi_w_payload_id;
+	logic valid;
+	logic ready;
+	logic first;
+	logic last;
+	logic [255:0] data;
+	logic [31:0] strb;
+	logic id;
     clocking axi_master @(posedge clk);
         default input #500ps output #500ps;
-        input axi_w_ready;
-        output axi_w_valid,axi_w_first,axi_w_last,axi_w_payload_data,axi_w_payload_strb,axi_w_payload_id;
+        input ready;
+        output valid,first,last,data,strb,id;
     endclocking
 endinterface
 
 interface axi_b_interface(input clk,rst);
     //axi b channel
-	logic axi_b_valid;
-	logic axi_b_ready;
-	logic axi_b_first;
-	logic axi_b_last;
-	logic [1:0] axi_b_payload_resp;
-	logic axi_b_payload_id;
+	logic valid;
+	logic ready;
+	logic first;
+	logic last;
+	logic [1:0] resp;
+	logic id;
     clocking axi_master @(posedge clk);
         default input #500ps output #500ps;
-        output axi_b_ready;
-        input axi_b_valid,axi_b_first,axi_b_last,axi_b_payload_resp,axi_b_payload_id;
+        output ready;
+        input valid,first,last,resp,id;
     endclocking
 endinterface
 	
 interface axi_ar_interface(input clk,rst);
     //axi ar channel
-	logic axi_ar_valid;
-	logic axi_ar_ready;
-	logic axi_ar_first;
-	logic axi_ar_last;
-	logic [31:0] axi_ar_payload_addr;
-	logic [1:0] axi_ar_payload_burst;
-	logic [7:0] axi_ar_payload_len;
-	logic [3:0] axi_ar_payload_size;
-	logic [1:0] axi_ar_payload_lock;
-	logic [2:0] axi_ar_payload_prot;
-	logic [3:0] axi_ar_payload_cache;
-	logic [3:0] axi_ar_payload_qos;
-	logic axi_ar_payload_id;
+	logic valid;
+	logic ready;
+	logic first;
+	logic last;
+	logic [31:0] addr;
+	logic [1:0] burst;
+	logic [7:0] len;
+	logic [3:0] size;
+	logic [1:0] lock;
+	logic [2:0] prot;
+	logic [3:0] cache;
+	logic [3:0] qos;
+	logic id;
     clocking axi_master @(posedge clk);
         default input #0.1 output #0.1;
-        input axi_ar_ready;
-        output axi_ar_valid,axi_ar_first,axi_ar_last,axi_ar_payload_addr,axi_ar_payload_burst,axi_ar_payload_len,axi_ar_payload_size,axi_ar_payload_id;
-        output axi_ar_payload_lock,axi_ar_payload_prot,axi_ar_payload_cache,axi_ar_payload_qos;
+        input ready;
+        output valid,first,last,addr,burst,len,size,id;
+        output lock,prot,cache,qos;
     endclocking
 
 endinterface
 	
 interface axi_r_interface(input clk,rst);
     //axi r channel
-	logic axi_r_valid;
-	logic axi_r_ready;
-	logic axi_r_first;
-	logic axi_r_last;
-	logic [1:0] axi_r_payload_resp;
-	logic [255:0] axi_r_payload_data;
-	logic axi_r_payload_id;
+	logic valid;
+	logic ready;
+	logic first;
+	logic last;
+	logic [1:0] resp;
+	logic [255:0] data;
+	logic id;
     clocking axi_master @(posedge clk);
         default input #500ps output #500ps;
-        output axi_r_ready;
-        input axi_r_valid,axi_r_first,axi_r_last,axi_r_payload_data,axi_r_payload_resp,axi_r_payload_id;
+        output ready;
+        input valid,first,last,data,resp,id;
     endclocking
 endinterface
 	
-
-
-interface ahb_interface(input clk,rst);
-    logic [31:0]         haddr;
-    logic                hwrite;
-    logic                hsel;
-    logic                hreadyin;
-    logic [31:0]         hwdata;
-    logic [1:0]          htrans;
-    logic [2:0]          hsize;
-    logic [2:0]          hburst;
-    logic                hready;
-    logic [31:0]         hrdata;
-    logic [1:0]          hresp;
-    logic                hgrant;
-    clocking axi_master @(posedge clk);
-        default input #500ps output #500ps;
-        input hready,hrdata,hresp,hgrant;
-        output haddr,hwrite,hsel,hreadyin,hwdata,htrans,hsize,hburst;
-    endclocking
-endinterface
 
 interface wishbone_interface(input clk,rst);
     logic [31:0] wishbone_port_adr;

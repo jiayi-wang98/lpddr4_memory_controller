@@ -28,3 +28,4 @@
 ../rtl/bankmachine_wrapper.sv
 ../rtl/mc_core.sv
 ../rtl/multiplexer_b8.v
+../rtl/tapped_delay_line.sv

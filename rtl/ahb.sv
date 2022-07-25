@@ -58,14 +58,26 @@ module mc_ahb_csr (
    output  logic [7:0] o_ref_tRP_cfg,
    output  logic [7:0] o_ref_tRFC_cfg,
 
-   output  logic [7:0] o_bm_PRECHARGE_TIME_cfg,
+   output  logic [7:0] o_bm_tRTP_cfg,
+   output  logic [7:0] o_bm_tWTP_cfg,
    output  logic [7:0] o_bm_tRAS_cfg,
    output  logic [7:0] o_bm_tRC_cfg,
    output  logic [7:0] o_bm_tRP_cfg,
    output  logic [7:0] o_bm_tRCD_cfg,
+   output  logic [7:0] o_bm_tCCDMW_cfg,
 
-   output  logic [4:0] o_crb_READ_LATENCY_cfg,
-   output  logic [4:0] o_crb_WRITE_LATENCY_cfg
+   output  logic [7:0] o_crb_READ_LATENCY_cfg,
+   output  logic [7:0] o_crb_WRITE_LATENCY_cfg,
+
+    input [3:0] dfi_re_dly_cfg,
+    input [3:0] dfi_we_dly_cfg,
+
+    input logic [3:0] dfi_mode, //0:default 1: transmit in progress 2:preamble 3: postamble 4:wlevel_en 5:wlevel_strobe
+    input logic [7:0] dfi_preamble,
+    input logic [7:0] dfi_postamble,
+    input logic [7:0] dfi_wlevel_en,
+    input logic [7:0] dfi_wlevel_strobe,
+    input logic [7:0] dfi_dqs_default_seq,
 );
    /*
    logic                               async_hgrant;
@@ -92,7 +104,7 @@ module mc_ahb_csr (
       .i_ahbs_hwrite                   (i_hwrite),
       .i_ahbs_hsel                     (i_hsel  ),
       .i_ahbs_hwdata                   (i_hwdata),
-      .i_ahbs_htrans                   (i_htrans),
+      .i_ahbs_htrans                   (i_htrans), //ignored
       .i_ahbs_hsize                    (i_hsize ),
       .i_ahbs_hburst                   (i_hburst),
       .i_ahbs_hreadyin                 (i_hreadyin),
@@ -129,7 +141,7 @@ module mc_ahb_csr (
 
    // AHB Sync block AHB Ext Clock to hclk
    logic hbusreq;
-   assign hbusreq=i_hsel&i_hreadyin;
+   assign hbusreq=i_hsel&i_hreadyin; 
 
    mc_ahb2ahb_sync #(
       .AWIDTH     (32),
@@ -172,7 +184,7 @@ module mc_ahb_csr (
    );
 
    logic mc_hsel;
-   assign mc_hsel=(mc_haddr>=32'h02000000) & (mc_haddr<=32'h02000010)? 1'b1:1'b0;
+   assign mc_hsel=(mc_haddr>=32'h02000000) & (mc_haddr<=32'h02000014)? 1'b1:1'b0;
    
    logic                slv_write;
    logic                slv_read;
@@ -240,11 +252,13 @@ module mc_ahb_csr (
       .o_ref_tRP_cfg(o_ref_tRP_cfg),
       .o_ref_tRFC_cfg(o_ref_tRFC_cfg),
 
-      .o_bm_PRECHARGE_TIME_cfg(o_bm_PRECHARGE_TIME_cfg),
+      .o_bm_tRTP_cfg(o_bm_tRTP_cfg),
+      .o_bm_tWTP_cfg(o_bm_tWTP_cfg),
       .o_bm_tRAS_cfg(o_bm_tRAS_cfg),
       .o_bm_tRC_cfg(o_bm_tRC_cfg),
       .o_bm_tRP_cfg(o_bm_tRP_cfg),
       .o_bm_tRCD_cfg(o_bm_tRCD_cfg),
+      .o_bm_tCCDMW_cfg(o_bm_tCCDMW_cfg),
 
       .o_crb_READ_LATENCY_cfg(o_crb_READ_LATENCY_cfg),
       .o_crb_WRITE_LATENCY_cfg(o_crb_WRITE_LATENCY_cfg)
@@ -281,20 +295,23 @@ module mc_csr #(
    output  logic [7:0] o_ref_tRP_cfg,
    output  logic [7:0] o_ref_tRFC_cfg,
 
-   output  logic [7:0] o_bm_PRECHARGE_TIME_cfg,
+   output  logic [7:0] o_bm_tRTP_cfg,
+   output  logic [7:0] o_bm_tWTP_cfg,
    output  logic [7:0] o_bm_tRAS_cfg,
    output  logic [7:0] o_bm_tRC_cfg,
    output  logic [7:0] o_bm_tRP_cfg,
    output  logic [7:0] o_bm_tRCD_cfg,
-
-   output  logic [4:0] o_crb_READ_LATENCY_cfg,
-   output  logic [4:0] o_crb_WRITE_LATENCY_cfg
+   output  logic [7:0] o_bm_tCCDMW_cfg,
+   
+   output  logic [7:0] o_crb_READ_LATENCY_cfg,
+   output  logic [7:0] o_crb_WRITE_LATENCY_cfg
 );
 typedef enum logic [3:0] {
       DECODE_MC_MUL_TIMING_CFG,
       DECODE_MC_MUL_LATENCY_CFG,
       DECODE_MC_REF_TIMING_CFG,
-      DECODE_MC_BM_TIMING_CFG,
+      DECODE_MC_BM_TIMING1_CFG,
+      DECODE_MC_BM_TIMING2_CFG,
       DECODE_MC_BM_CRB_CFG,
       DECODE_NOOP_0,
       DECODE_NOOP_1,
@@ -311,8 +328,9 @@ typedef enum logic [3:0] {
          32'h02000000 : decode = DECODE_MC_MUL_TIMING_CFG;
          32'h02000004 : decode = DECODE_MC_MUL_LATENCY_CFG;
          32'h02000008 : decode = DECODE_MC_REF_TIMING_CFG;
-         32'h0200000C : decode = DECODE_MC_BM_TIMING_CFG;
-         32'h02000010 : decode = DECODE_MC_BM_CRB_CFG;
+         32'h0200000C : decode = DECODE_MC_BM_TIMING1_CFG;
+         32'h02000010 : decode = DECODE_MC_BM_TIMING2_CFG;
+         32'h02000014 : decode = DECODE_MC_BM_CRB_CFG;
          default : begin 
             decode = DECODE_NOOP_0;
             o_error = 1'b1;
@@ -323,7 +341,7 @@ typedef enum logic [3:0] {
    logic [31:0] mc_mul_timing_cfg_q;
    always_ff @( posedge i_hclk, posedge i_hreset)
       if (i_hreset)
-         mc_mul_timing_cfg_q <= 32'h08170702 ;
+         mc_mul_timing_cfg_q <= 32'h021070020 ;
       else
          if (i_write)
             if (decode == DECODE_MC_MUL_TIMING_CFG)
@@ -341,7 +359,7 @@ typedef enum logic [3:0] {
    logic [31:0] mc_mul_latency_cfg_q;
    always_ff @( posedge i_hclk, posedge i_hreset)
       if (i_hreset)
-         mc_mul_latency_cfg_q <= 32'h4080520;
+         mc_mul_latency_cfg_q <= 32'h20400a0d;
       else
          if (i_write)
             if (decode ==DECODE_MC_MUL_LATENCY_CFG)
@@ -356,7 +374,7 @@ typedef enum logic [3:0] {
    logic [31:0] mc_ref_timing_cfg_q;
    always_ff @( posedge i_hclk, posedge i_hreset)
       if (i_hreset)
-         mc_ref_timing_cfg_q <= 32'h610C8823;
+         mc_ref_timing_cfg_q <= 32'h610C8800;
       else
          if (i_write)
             if (decode == DECODE_MC_REF_TIMING_CFG)
@@ -370,29 +388,41 @@ typedef enum logic [3:0] {
    logic [31:0] mc_bm_timing_cfg_q;
    always_ff @( posedge i_hclk, posedge i_hreset)
       if (i_hreset)
-         mc_bm_timing_cfg_q <= 32'h0C231830;
+         mc_bm_timing_cfg_q <= 32'h23181104;
       else
-         if (i_write)
-            if (decode == DECODE_MC_BM_TIMING_CFG)
+         if (i_write) 
+            if (decode == DECODE_MC_BM_TIMING1_CFG)
                mc_bm_timing_cfg_q <= i_wdata;
 
-   assign o_bm_PRECHARGE_TIME_cfg = mc_bm_timing_cfg_q[7:0];
-   assign o_bm_tRAS_cfg = mc_bm_timing_cfg_q[15:8];
-   assign o_bm_tRC_cfg = mc_bm_timing_cfg_q[23:16];
-   assign o_bm_tRP_cfg = mc_bm_timing_cfg_q[31:24];
+   assign o_bm_tRTP_cfg = mc_bm_timing_cfg_q[7:0];
+   assign o_bm_tWTP_cfg = mc_bm_timing_cfg_q[15:8];
+   assign o_bm_tRAS_cfg = mc_bm_timing_cfg_q[23:16];
+   assign o_bm_tRC_cfg = mc_bm_timing_cfg_q[31:24];
 
-   logic [31:0] mc_bm_crb_cfg_q;
+   logic [31:0] mc_bm_t_cfg_q; // address 10
    always_ff @( posedge i_hclk, posedge i_hreset)
       if (i_hreset)
-         mc_bm_crb_cfg_q <= 32'h001980B;
+         mc_bm_t_cfg_q <= 32'h00080b0c; //top 8 bits not needed
+      else
+         if (i_write)
+            if (decode == DECODE_MC_BM_TIMING2_CFG)
+               mc_bm_t_cfg_q <= i_wdata;
+
+   assign o_bm_tRP_cfg = mc_bm_t_cfg_q[7:0];
+   assign o_bm_tRCD_cfg = mc_bm_t_cfg_q[15:8];
+   assign o_bm_tCCDMW_cfg = mc_bm_t_cfg_q[23:16];
+
+   logic [31:0] mc_bm_crb_cfg_q; // address 14
+   always_ff @( posedge i_hclk, posedge i_hreset)
+      if (i_hreset)
+         mc_bm_crb_cfg_q <= 32'h00000c18;
       else
          if (i_write)
             if (decode == DECODE_MC_BM_CRB_CFG)
                mc_bm_crb_cfg_q <= i_wdata;
 
-   assign o_bm_tRCD_cfg = mc_bm_crb_cfg_q[7:0];
-   assign o_crb_READ_LATENCY_cfg = mc_bm_crb_cfg_q[15:8];
-   assign o_crb_WRITE_LATENCY_cfg = mc_bm_crb_cfg_q[23:16];
+   assign o_crb_READ_LATENCY_cfg = mc_bm_crb_cfg_q[7:0];
+   assign o_crb_WRITE_LATENCY_cfg = mc_bm_crb_cfg_q[15:8];
 
 
    always_comb
@@ -401,7 +431,8 @@ typedef enum logic [3:0] {
             DECODE_MC_MUL_TIMING_CFG : o_rdata = mc_mul_timing_cfg_q;
             DECODE_MC_MUL_LATENCY_CFG : o_rdata = mc_mul_latency_cfg_q;
             DECODE_MC_REF_TIMING_CFG : o_rdata = mc_ref_timing_cfg_q;
-            DECODE_MC_BM_TIMING_CFG : o_rdata = mc_bm_timing_cfg_q;
+            DECODE_MC_BM_TIMING1_CFG : o_rdata = mc_bm_timing_cfg_q;
+            DECODE_MC_BM_TIMING2_CFG : o_rdata = mc_bm_t_cfg_q;
             DECODE_MC_BM_CRB_CFG : o_rdata = mc_bm_crb_cfg_q;
             default : o_rdata = '0;
          endcase
@@ -616,9 +647,9 @@ module mc_ahb2ahb_sync #(
    localparam CWIDTH = AWIDTH+10;
    localparam WWIDTH = DWIDTH ;
    localparam RWIDTH = DWIDTH+4;
-
+   generate
    if(ASYNC==1) begin: ASYNC_FIFO
-     // ASYNC FIFO
+   // ASYNC FIFO
      logic [AWIDTH-1:0]   m1_haddr_q;
      logic                m1_hwrite_q;
      logic                m1_hbusreq_q;
@@ -1070,7 +1101,7 @@ module mc_ahb2ahb_sync #(
     assign  o_m1_hresp   = i_m2_hresp ;
     assign  o_m1_hgrant  = i_m2_hgrant;
   end
-
+   endgenerate
 endmodule
 
 module mc_fifo #(
@@ -1243,7 +1274,7 @@ module mc_fifo #(
    end
 
    assign o_early_empty_n = (rgray_next_q != wgray_sync) & o_empty_n ;
-   assign o_empty_n       = rgray_q != wgray_sync;
+   assign o_empty_n       = rgray_q != wgray_sync; 
    assign raddr           = rbin_q[AWIDTH-1:0];
    // ------------------------------------------------------------------------
    // Synchronizers

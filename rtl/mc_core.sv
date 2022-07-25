@@ -32,11 +32,12 @@ module mc_core(
     input [7:0] bm_tCCDMW_cfg,
 
     input [7:0] crb_READ_LATENCY_cfg,
-    input [7:0] crb_WRITE_LATENCY_cfg
+    input [7:0] crb_WRITE_LATENCY_cfg,
+    input [7:0] dfi_rddata_en_latency_cfg,
+    input [7:0] dfi_wrdata_en_latency_cfg,
 
-    
+    input [7:0] dfi_wdqs_preamble_cfg
 );
-
 litedram_interface litedram_if(clk,rst);
 
 crossbar_2ports_wrapper u_crossbar_2ports_wrapper (
@@ -187,20 +188,10 @@ DFIAdapter u_DFIAdapter (
         dfi_lpddr4_if.dfi_phase2_lpddr4_if.wrdata=dfi_if.dfi_phase2_interface_if.wrdata;
         dfi_lpddr4_if.dfi_phase3_lpddr4_if.wrdata=dfi_if.dfi_phase3_interface_if.wrdata;
 
-        dfi_lpddr4_if.dfi_phase0_lpddr4_if.wrdata_en=dfi_if.dfi_phase0_interface_if.wrdata_en;
-        dfi_lpddr4_if.dfi_phase1_lpddr4_if.wrdata_en=dfi_if.dfi_phase1_interface_if.wrdata_en;
-        dfi_lpddr4_if.dfi_phase2_lpddr4_if.wrdata_en=dfi_if.dfi_phase2_interface_if.wrdata_en;
-        dfi_lpddr4_if.dfi_phase3_lpddr4_if.wrdata_en=dfi_if.dfi_phase3_interface_if.wrdata_en;
-
         dfi_lpddr4_if.dfi_phase0_lpddr4_if.wrdata_mask=dfi_if.dfi_phase0_interface_if.wrdata_mask;
         dfi_lpddr4_if.dfi_phase1_lpddr4_if.wrdata_mask=dfi_if.dfi_phase1_interface_if.wrdata_mask;
         dfi_lpddr4_if.dfi_phase2_lpddr4_if.wrdata_mask=dfi_if.dfi_phase2_interface_if.wrdata_mask;
         dfi_lpddr4_if.dfi_phase3_lpddr4_if.wrdata_mask=dfi_if.dfi_phase3_interface_if.wrdata_mask;
-
-        dfi_lpddr4_if.dfi_phase0_lpddr4_if.rddata_en=dfi_if.dfi_phase0_interface_if.rddata_en;
-        dfi_lpddr4_if.dfi_phase1_lpddr4_if.rddata_en=dfi_if.dfi_phase1_interface_if.rddata_en;
-        dfi_lpddr4_if.dfi_phase2_lpddr4_if.rddata_en=dfi_if.dfi_phase2_interface_if.rddata_en;
-        dfi_lpddr4_if.dfi_phase3_lpddr4_if.rddata_en=dfi_if.dfi_phase3_interface_if.rddata_en;
 
         dfi_if.dfi_phase0_interface_if.rddata=dfi_lpddr4_if.dfi_phase0_lpddr4_if.rddata;
         dfi_if.dfi_phase1_interface_if.rddata=dfi_lpddr4_if.dfi_phase1_lpddr4_if.rddata;
@@ -212,4 +203,45 @@ DFIAdapter u_DFIAdapter (
         dfi_if.dfi_phase2_interface_if.rddata_valid=dfi_lpddr4_if.dfi_phase2_lpddr4_if.rddata_valid;
         dfi_if.dfi_phase3_interface_if.rddata_valid=dfi_lpddr4_if.dfi_phase3_lpddr4_if.rddata_valid;
     end
+
+logic [31:0] rddata_en_dly_line;
+logic rddata_en_dly;
+logic [31:0] wrdata_en_dly_line;
+logic wrdata_en_dly_pre;
+logic wrdata_en_dly;
+
+tapped_delay_line32 #(.WIDTH(1)) u_tapped_delay_rden  (
+    .clk        (clk),
+    .rst        (rst),
+    .i_d        (dfi_if.dfi_phase0_interface_if.rddata_en|dfi_if.dfi_phase1_interface_if.rddata_en|dfi_if.dfi_phase2_interface_if.rddata_en|dfi_if.dfi_phase3_interface_if.rddata_en),
+    .o_d_dly    (rddata_en_dly_line)
+);
+
+assign rddata_en_dly=rddata_en_dly_line[dfi_rddata_en_latency_cfg];
+
+assign dfi_lpddr4_if.dfi_phase0_lpddr4_if.rddata_en=rddata_en_dly;
+assign dfi_lpddr4_if.dfi_phase1_lpddr4_if.rddata_en=rddata_en_dly;
+assign dfi_lpddr4_if.dfi_phase2_lpddr4_if.rddata_en=rddata_en_dly;
+assign dfi_lpddr4_if.dfi_phase3_lpddr4_if.rddata_en=rddata_en_dly;
+
+tapped_delay_line32 u_tapped_delay_wren (
+    .clk        (clk),
+    .rst        (rst),
+    .i_d        (dfi_if.dfi_phase0_interface_if.wrdata_en|dfi_if.dfi_phase1_interface_if.wrdata_en|dfi_if.dfi_phase2_interface_if.wrdata_en|dfi_if.dfi_phase3_interface_if.wrdata_en),
+    .o_d_dly    (wrdata_en_dly_line)
+);
+
+always_ff@(posedge clk,posedge rst) begin
+    if(rst) wrdata_en_dly_pre<=0;
+    else wrdata_en_dly_pre<=wrdata_en_dly;
+end
+
+assign wrdata_en_dly=wrdata_en_dly_line[dfi_wrdata_en_latency_cfg];
+
+assign dfi_lpddr4_if.dfi_phase0_lpddr4_if.wrdata_en=(~wrdata_en_dly_pre && wrdata_en_dly)? dfi_wdqs_preamble_cfg[1]:wrdata_en_dly;
+assign dfi_lpddr4_if.dfi_phase1_lpddr4_if.wrdata_en=(~wrdata_en_dly_pre && wrdata_en_dly)? dfi_wdqs_preamble_cfg[3]:wrdata_en_dly;
+assign dfi_lpddr4_if.dfi_phase2_lpddr4_if.wrdata_en=(~wrdata_en_dly_pre && wrdata_en_dly)? dfi_wdqs_preamble_cfg[5]:wrdata_en_dly;
+assign dfi_lpddr4_if.dfi_phase3_lpddr4_if.wrdata_en=(~wrdata_en_dly_pre && wrdata_en_dly)? dfi_wdqs_preamble_cfg[7]:wrdata_en_dly;
+
+
 endmodule

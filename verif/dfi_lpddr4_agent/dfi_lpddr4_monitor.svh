@@ -300,7 +300,10 @@
         @(intf.dfi_phase0_lpddr4_if.mon_ck);
         //wrdata_mask=&((intf.dfi_phase0_lpddr4_if.mon_ck.wrdata_mask&intf.dfi_phase1_lpddr4_if.mon_ck.wrdata_mask)&(intf.dfi_phase2_lpddr4_if.mon_ck.wrdata_mask&intf.dfi_phase3_lpddr4_if.mon_ck.wrdata_mask));
         //if(wrdata_mask===1'b0) begin
-        if(wrdata_en_dly[9]===1'b1) begin
+
+        //if(wrdata_en_dly[0]===1'b1) begin
+        if(wrdata_en===1'b1) begin
+        //if((intf.dfi_phase0_lpddr4_if.mon_ck.wrdata_en||intf.dfi_phase1_lpddr4_if.mon_ck.wrdata_en)||(intf.dfi_phase2_lpddr4_if.mon_ck.wrdata_en||intf.dfi_phase3_lpddr4_if.mon_ck.wrdata_en)) begin
           wrdata.we=1;
           wrdata.data={intf.dfi_phase3_lpddr4_if.mon_ck.wrdata,intf.dfi_phase2_lpddr4_if.mon_ck.wrdata,intf.dfi_phase1_lpddr4_if.mon_ck.wrdata,intf.dfi_phase0_lpddr4_if.mon_ck.wrdata};
           wrdata.data_mask={intf.dfi_phase3_lpddr4_if.mon_ck.wrdata_mask,intf.dfi_phase2_lpddr4_if.mon_ck.wrdata_mask,intf.dfi_phase1_lpddr4_if.mon_ck.wrdata_mask,intf.dfi_phase0_lpddr4_if.mon_ck.wrdata_mask};
